@@ -101,28 +101,24 @@ def sizeReduction(data, targetShape, opt, poolBox=(2,2,2), filename=None):
 
     return threeDMatRedux
 
+def fALFF2ThreeDeeUsage():
+    data = loadfALFF(4)
 
-#a = np.load('tmp.npy')
-#plt.imshow(a[:,:,22], cmap = "gray")
-#plt.show()
+    sizeReduction(data, (45, 54, 45), opt=3, poolBox=(2,2,2), filename='tmp')
 
-data = loadfALFF(4)
+    plt.subplot(2,2,1)
+    plt.imshow(data[:,:,44], cmap = "gray")
 
-sizeReduction(data, (45, 54, 45), opt=3, poolBox=(2,2,2), filename='tmp')
+    avgPoolData = sizeReduction(data, (45, 54, 45), opt=1, poolBox=(2,2,2))
+    plt.subplot(2,2,2)
+    plt.imshow(avgPoolData[:,:,22], cmap = "gray")
 
-plt.subplot(2,2,1)
-plt.imshow(data[:,:,44], cmap = "gray")
+    randomPollData1 = sizeReduction(data, (45, 54, 45), opt=2, poolBox=(2,2,2))
+    plt.subplot(2,2,3)
+    plt.imshow(randomPollData1[:,:,22], cmap = "gray")
 
-avgPoolData = sizeReduction(data, (45, 54, 45), opt=1, poolBox=(2,2,2))
-plt.subplot(2,2,2)
-plt.imshow(avgPoolData[:,:,22], cmap = "gray")
+    randomPollData2 = sizeReduction(data, (45, 54, 45), opt=3, poolBox=(2,2,2))
+    plt.subplot(2,2,4)
+    plt.imshow(randomPollData2[:,:,22], cmap = "gray")
 
-randomPollData1 = sizeReduction(data, (45, 54, 45), opt=2, poolBox=(2,2,2))
-plt.subplot(2,2,3)
-plt.imshow(randomPollData1[:,:,22], cmap = "gray")
-
-randomPollData2 = sizeReduction(data, (45, 54, 45), opt=3, poolBox=(2,2,2))
-plt.subplot(2,2,4)
-plt.imshow(randomPollData2[:,:,22], cmap = "gray")
-
-plt.show()
+    plt.show()
