@@ -24,18 +24,30 @@ def loadfALFF(patientID):
     """
     threeDMat = np.zeros(brainSz)
 
-    with open('coord.csv') as csvfile:
+    with open('/data/coord.csv') as csvfile:
         csvR = csv.reader(csvfile)
         coordsList = list(csvR)
         coords = np.array(coordsList)
         coords = coords[1:,1:]
         coords = coords.astype('int')-1
 
-    with open('fALFF.csv') as csvfile:
-        falffArr = next(itertools.islice(csv.reader(csvfile), patientID, None))
 
-    for (coord,falff) in zip(coords,falffArr):
-        threeDMat[coord[0],coord[1],coord[2]] = falff
+    with open('/data/processed_phenotype_data.csv') as csvfile:
+        id = next(itertools.islice(csv.reader(csvfile), patientID, None))[2]
+
+    count = 0
+    fileName = '/data/fALFF_Data/'+str(id)+'.csv'
+    with open(fileName) as csvfile:
+        csvR = csv.reader(csvfile)
+        first = True
+        for row in csvR:
+            if first:
+                first = False
+                continue
+
+            coord = coords[count,:]
+            threeDMat[coord[0],coord[1],coord[2]] = float(row[1])
+            count += 1
 
     return threeDMat
 
@@ -65,15 +77,15 @@ def sizeReduction(data, targetShape, opt, poolBox=(2,2,2), filename=None):
     ratio = map(truediv,brainSz,targetShape)
     threeDMatRedux = np.zeros(targetShape)
 
-    lowBoxExtension = [math.floor(i/2.0) for i in poolBox]
-    highBoxExtension = [math.ceil(i/2.0) for i in poolBox]
+    lowBoxExtension = [int(math.floor(i/2.0)) for i in poolBox]
+    highBoxExtension = [int(math.ceil(i/2.0)) for i in poolBox]
 
     for x in range(targetShape[0]):
-        xDisc = math.floor(x*ratio[0])
+        xDisc = int(math.floor(x*ratio[0]))
         for y in range(targetShape[1]):
-            yDisc = math.floor(y*ratio[1])
+            yDisc = int(math.floor(y*ratio[1]))
             for z in range(targetShape[2]):
-                zDisc = math.floor(z*ratio[2])
+                zDisc = int(math.floor(z*ratio[2]))
                 # sample the center
                 if opt == 0:
                     threeDMatRedux[x,y,z] = data[xDisc, yDisc, zDisc]
@@ -100,6 +112,18 @@ def sizeReduction(data, targetShape, opt, poolBox=(2,2,2), filename=None):
         np.save(filename, threeDMatRedux)
 
     return threeDMatRedux
+
+def loadfALFF_All():
+    for i in xrange(1,1072):
+        if i%25==0:
+            print i
+        data = loadfALFF(i)
+        sizeReduction(data, (45, 54, 45), opt=1, poolBox=(2,2,2), filename='pooledData/avgPool_'+str(i)+'_reduce2')
+        sizeReduction(data, (30, 36, 30), opt=1, poolBox=(3,3,3), filename='pooledData/avgPool_'+str(i)+'_reduce3')
+        sizeReduction(data, (45, 54, 45), opt=2, poolBox=(2,2,2), filename='pooledData/randomPool_'+str(i)+'_reduce2')
+        sizeReduction(data, (30, 36, 30), opt=2, poolBox=(3,3,3), filename='pooledData/randomPool_'+str(i)+'_reduce3')
+        sizeReduction(data, (45, 54, 45), opt=3, poolBox=(2,2,2), filename='pooledData/maxPool_'+str(i)+'_reduce2')
+        sizeReduction(data, (30, 36, 30), opt=3, poolBox=(3,3,3), filename='pooledData/maxPool_'+str(i)+'_reduce3')
 
 def fALFF2ThreeDeeUsage():
     data = loadfALFF(4)
