@@ -55,14 +55,8 @@ class ConvolutionalNN(object):
         else:
             nextLayer = tf.nn.conv2d_transpose(prev_layer_out, w_conv, 
                             strides=layer_stride, padding='SAME',use_cudnn_on_gpu=False,name=w_name)
-
-        if if_relu:
-            nextLayer = relu(nextLayer)
-
-        if batchNorm:
-            nextLayer = batch_norm(nextLayer)
         
-        return nextLayer, w_conv
+        return nextLayer, w_deconv
         
     def pool(self, prev_layer, window_size, str_size, poolType = 'max'):
         next_layer = None
