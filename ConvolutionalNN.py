@@ -1,6 +1,3 @@
-from keras.models import Sequential
-from keras.layers import Dense, Activation
-from keras.optimizers import SGD
 import tensorflow as tf
 import numpy as np
 from input_brain import *
@@ -24,37 +21,36 @@ class ConvolutionalNN(object):
                           name=w_name)
         
         numFilters = w_shape[len(w_shape)-1]
-        b = tf.Variable(tf.random_normal(numFilters, stddev=self.stdDev))
+        # print("This is the num filters: " + str(numFilters))
+        b = tf.Variable(tf.random_normal([numFilters], stddev=self.stdDev))
 
         nextLayer = None
         if num_dim == '3d':
             nextLayer = tf.add(tf.nn.conv3d(prev_layer_out, w_conv, 
-                            strides=layer_stride, padding='SAME',use_cudnn_on_gpu=False,name=w_name),b)
+                            strides=layer_stride, padding='SAME',name=w_name),b)
         else:
             nextLayer = tf.add(tf.nn.conv2d(prev_layer_out, w_conv, 
-                            strides=layer_stride, padding='SAME',use_cudnn_on_gpu=False,name=w_name),b)
+                            strides=layer_stride, padding='SAME',name=w_name),b)
 
         if batchNorm:
-            nextLayer = batch_norm(nextLayer, [numFilters], [numFilters], [numFilters], [numFilters])
+            nextLayer = self.batch_norm(nextLayer, [numFilters], [numFilters], [numFilters], [numFilters])
 
         if if_relu:
-            nextLayer = relu(nextLayer)
+            nextLayer = self.relu(nextLayer)
 
+        print("The shape of this Weights is: " + str(w_conv.get_shape()))
         
         return nextLayer, w_conv
 
 
-    def deconv_layer(self, prev_layer_out, filter_shape, out_shape, strides, padding='SAME', num_dim = '2d'):
-        w_deconv = tf.Variable(tf.random_normal(w_shape, stddev=self.stdDev),
-                          name=w_name)
-
+    def deconv_layer(self, prev_layer_out, filter_shape, out_shape, layer_stride, padding='SAME', num_dim = '2d'):
         nextLayer = None
         if num_dim == '3d':
-            nextLayer = tf.nn.conv3d_transpose(prev_layer_out, [], 
-                            strides=layer_stride, padding='SAME',use_cudnn_on_gpu=False,name=w_name)
+            nextLayer = tf.nn.conv3d_transpose(prev_layer_out,filter_shape, out_shape, 
+                            strides=layer_stride, padding='SAME')
         else:
-            nextLayer = tf.nn.conv2d_transpose(prev_layer_out, w_conv, 
-                            strides=layer_stride, padding='SAME',use_cudnn_on_gpu=False,name=w_name)
+            nextLayer = tf.nn.conv2d_transpose(prev_layer_out, filter_shape, out_shape, 
+                            strides=layer_stride, padding='SAME')
         
         return nextLayer, w_deconv
         
@@ -74,10 +70,10 @@ class ConvolutionalNN(object):
         return next_layer
 
     def batch_norm(self, prev_layer, mu_shape, sig_shape, beta_shape,scale_shape, var_eps = 1e-6):
-        mu = init_weights(mu_shape)
-        sigma = init_weights(sig_shape)
-        beta = init_weights(beta_shape)
-        scale = init_weights(scale_shape)
+        mu = self.init_weights(mu_shape)
+        sigma = self.init_weights(sig_shape)
+        beta = self.init_weights(beta_shape)
+        scale = self.init_weights(scale_shape)
         next_layer = tf.nn.batch_normalization(prev_layer, mu, sigma, beta, scale, var_eps)
         return next_layer
 
@@ -89,19 +85,19 @@ class ConvolutionalNN(object):
         return tf.maximum(x, leak*x)
 
     def fcLayer(self, prev_layer, shape):
-        wOut = init_weights(shape)
-        pyx = tf.matmul(layer3, wOut)
+        wOut = self.init_weights(shape)
+        pyx = tf.matmul(prev_layer, wOut)
         return pyx
 
 
     def createVariables(self, x_shape, y_shape):
-        # X = tf.placeholder("float", x_shape)
-        # Y = tf.placeholder("float", y_shape)
+        X = tf.placeholder("float", x_shape)
+        Y = tf.placeholder("float", y_shape)
         p_keep_conv = tf.placeholder("float")
-        # return X,Y,p_keep_conv
+        return X,Y,p_keep_conv
 
-        input_x, input_y = inputs(True, '/data/brain_binary_list.json', 2)
-
+        # input_x, input_y = inputs(True, '/data/brain_binary_list.json', 2)
+        # print("The shape of the Y input is: " + str(input_y.get_shape()))
         return input_x, input_y, p_keep_conv
 
     def cost_function(self, model_output, Y):
@@ -118,20 +114,20 @@ class ConvolutionalNN(object):
 
 
     def build_simple_model(self, X, Y):
-         layer1, w_1 = self.conv_layer( X, [3, 3, 3, 1, 16], [1, 1, 1, 1], "layer1_filters", '3d', True, True)
-         layer3, w_3 = self.conv_layer( layer1, [3, 3, 3, 16, 16], [1, 1, 1, 1], "layer2_filters", '3d', True, True)
-         layer3 = self.pool(layer3,[1, 5, 9, 5, 3],[1, 5, 9, 5, 3] , 'max')
-         layer3 = tf.reshape(layer3, [1, 810])
-         pyx = self.fcLayer(layer3, [ 810, 1])
+         layer1, w_1 = self.conv_layer( X, [3, 3, 3, 1, 1], [1, 1, 1, 1, 1], "layer1_filters", '3d', True, True)
+         layer2, w_3 = self.conv_layer( layer1, [3, 3, 3, 1, 1], [1, 1, 1, 1, 1], "layer2_filters", '3d', True, True)
+         layer2 = self.pool(layer2,[1, 5, 9, 5, 1],[1, 5, 9, 5, 1] , 'max')
+         layer2 = tf.reshape(layer2, [1, 972])
+         pyx = self.fcLayer(layer2, [ 972, 2])
          return pyx
 
     def cnn_autoencoder(self, X, input):
         encode = []
         decode = []
-        layer1, w_1 = self.conv_layer( X, [5, 5, 5, 1, 10], [1, 1, 1, 1], "layer1_filters", '3d', True)
-        layer1 = self.pool(layer1,[1, 5, 9, 5, 3],[1, 5, 9, 5, 3] , 'avg')
+        layer1, w_1 = self.conv_layer( X, [5, 5, 5, 1, 1], [1, 1, 1, 1, 1], "layer1_filters", '3d', True)
+        layer1 = self.pool(layer1,[1, 5, 9, 5, 1],[1, 5, 9, 5, 1] , 'avg')
         encode.append(layer1)
-        layer3, w_3 = self.deconv_layer(layer1, [2, 2, 2, 10, 1], [1, 45, 54, 45], [1, 1, 1, 1], padding='SAME', num_dim='3d')
+        layer3, w_3 = self.deconv_layer(layer1, [2, 2, 2, 1, 1], [1, 45, 54, 45, 1], [1, 1, 1, 1, 1], padding='SAME', num_dim='3d')
         decode.append(layer3)
 
         return encode, decode
