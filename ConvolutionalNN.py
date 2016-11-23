@@ -3,7 +3,7 @@ from keras.layers import Dense, Activation
 from keras.optimizers import SGD
 import tensorflow as tf
 import numpy as np
-from fALFF import *
+from input_brain import *
 
 
 # Define custom API for creating and adding layers to NN Model
@@ -95,11 +95,14 @@ class ConvolutionalNN(object):
 
 
     def createVariables(self, x_shape, y_shape):
-        X = tf.placeholder("float", x_shape)
-        Y = tf.placeholder("float", y_shape)
+        # X = tf.placeholder("float", x_shape)
+        # Y = tf.placeholder("float", y_shape)
         p_keep_conv = tf.placeholder("float")
+        # return X,Y,p_keep_conv
 
-        return X,Y,p_keep_conv
+        input_x, input_y = inputs(True, '/data/brain_binary_list.json', 2)
+
+        return input_x, input_y, p_keep_conv
 
     def cost_function(self, model_output, Y):
         cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(model_output, Y))
@@ -114,21 +117,21 @@ class ConvolutionalNN(object):
         return predict_op
 
 
-    def build_simple_model(X, Y, input):
-         layer1, w_1 = conv_layer( X,[3, 3, 3, 1, 16], [1, 1, 1, 1], "layer1_filters", '3d', True, True)
-         layer3, w_3 = conv_layer( layer1, [3, 3, 3, 16, 16], [1, 1, 1, 1], "layer2_filters", '3d', True, True)
-         layer3 = pool(layer3,[1, 5, 9, 5, 3],[1, 5, 9, 5, 3] , 'max')
+    def build_simple_model(self, X, Y):
+         layer1, w_1 = self.conv_layer( X, [3, 3, 3, 1, 16], [1, 1, 1, 1], "layer1_filters", '3d', True, True)
+         layer3, w_3 = self.conv_layer( layer1, [3, 3, 3, 16, 16], [1, 1, 1, 1], "layer2_filters", '3d', True, True)
+         layer3 = self.pool(layer3,[1, 5, 9, 5, 3],[1, 5, 9, 5, 3] , 'max')
          layer3 = tf.reshape(layer3, [1, 810])
-         pyx = fcLayer(layer3, [ 810, 1])
+         pyx = self.fcLayer(layer3, [ 810, 1])
          return pyx
 
-    def cnn_autoencoder(X, input):
+    def cnn_autoencoder(self, X, input):
         encode = []
         decode = []
-        layer1, w_1 = conv_layer( X, [5, 5, 5, 1, 10], [1, 1, 1, 1], "layer1_filters", '3d', True)
-        layer1 = pool(layer1,[1, 5, 9, 5, 3],[1, 5, 9, 5, 3] , 'avg')
+        layer1, w_1 = self.conv_layer( X, [5, 5, 5, 1, 10], [1, 1, 1, 1], "layer1_filters", '3d', True)
+        layer1 = self.pool(layer1,[1, 5, 9, 5, 3],[1, 5, 9, 5, 3] , 'avg')
         encode.append(layer1)
-        layer3, w_3 = deconv_layer(layer1, [2, 2, 2, 10, 1], [1, 45, 54, 45], [1, 1, 1, 1], padding='SAME', num_dim='3d')
+        layer3, w_3 = self.deconv_layer(layer1, [2, 2, 2, 10, 1], [1, 45, 54, 45], [1, 1, 1, 1], padding='SAME', num_dim='3d')
         decode.append(layer3)
 
         return encode, decode

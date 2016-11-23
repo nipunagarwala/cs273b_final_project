@@ -52,7 +52,7 @@ def _generate_image_and_label_batch(image, label, min_queue_examples, batch_size
 			[image, label],
 			batch_size=batch_size,
 			num_threads=train_preprocess_threads,
-			capacity=min_queue_examples + 3 * batch_size #TODO: subject to change
+			capacity=min_queue_examples + 3 * batch_size, #TODO: subject to change
 			min_after_dequeue=min_queue_examples
 		)
 	else:
@@ -86,7 +86,7 @@ def inputs(train, data_list, batch_size):
 	
 	# Create a queue that produces the filenames to read
 	if train:
-		num_examples_per epoch = NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN
+		num_examples_per_epoch = NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN
 		filename_queue = filename_queue = tf.train.string_input_producer(filenames, shuffle=True)
 	else:
 		num_examples_per_epoch = NUM_EXAMPLES_PER_EPOCH_FOR_EVAL
