@@ -1,6 +1,6 @@
 import tensorflow as tf
 import numpy as np
-from fALFF23D import *
+from utils import *
 from ConvolutionalNN import *
 from input_brain import *
 
@@ -10,7 +10,7 @@ def createModel():
     print("Creating the Convolutional Neural Network Object")
     simpleCnn = ConvolutionalNN()
     print("Creating the X and Y placeholder variables")
-    X,Y, p_keep = simpleCnn.createVariables([2, 45, 54, 45, 1], [2, 45, 54, 45, 1])
+    X,Y, p_keep = simpleCnn.createVariables([32, 45, 54, 45, 1], [32, 45, 54, 45, 1])
     print("Building the CNN network")
     encode,decode = simpleCnn.cnn_autoencoder(X, Y)
     print("Building the cost function")
@@ -35,8 +35,8 @@ def main():
         tf.initialize_all_variables().run()
         for i in range(10):
             print("Running iteration {} of TF Session".format(i))
-            randX = np.random.random((2, 45, 54, 45, 1))
-            yVal = np.random.random((2, 45, 54, 45, 1))
+            randX = np.random.random((32, 45, 54, 45, 1))
+            yVal = np.random.random((32, 45, 54, 45, 1))
             # reducImage = sideReduction(origImage, (45,54,45), 1, (2,2,2))
             sess.run(train_op, feed_dict={X: randX, Y: yVal})
 

@@ -1,6 +1,7 @@
 import tensorflow as tf
 import numpy as np
 from input_brain import *
+from utils import *
 
 
 # Define custom API for creating and adding layers to NN Model
@@ -43,16 +44,29 @@ class ConvolutionalNN(object):
         return nextLayer, w_conv
 
 
-    def deconv_layer(self, prev_layer_out, filter_shape, out_shape, layer_stride, padding='SAME', num_dim = '2d'):
+    def deconv_layer(self, prev_layer_out, filter_shape, out_shape, layer_stride, w_name, num_dim = '2d', if_relu = True, batchNorm = True):
+        w_deconv = tf.Variable(tf.random_normal(filter_shape, stddev=self.stdDev),
+                          name=w_name)
+
+
+        numFilters =filter_shape[len(filter_shape)-1]
+        b = tf.Variable(tf.random_normal([numFilters], stddev=self.stdDev))
+
         nextLayer = None
-        print("The filter shape is: " + str(filter_shape.get_shape()))
 
         if num_dim == '3d':
-            nextLayer = tf.nn.conv3d_transpose(prev_layer_out,filter_shape, out_shape, 
-                            strides=layer_stride, padding='SAME')
+            nextLayer = tf.add(tf.nn.conv3d_transpose(prev_layer_out, w_deconv, out_shape, 
+                            strides=layer_stride, padding='SAME'),b)
         else:
-            nextLayer = tf.nn.conv2d_transpose(prev_layer_out, filter_shape, out_shape, 
-                            strides=layer_stride, padding='SAME')
+            nextLayer = tf.add(tf.nn.conv2d_transpose(prev_layer_out, w_deconv, out_shape, 
+                            strides=layer_stride, padding='SAME'),b)
+
+        if batchNorm:
+            nextLayer = self.batch_norm(nextLayer, [numFilters], [numFilters], [numFilters], [numFilters])
+
+        if if_relu:
+            nextLayer = self.relu(nextLayer)
+
         
         return nextLayer
         
@@ -115,21 +129,20 @@ class ConvolutionalNN(object):
         return predict_op
 
 
-    def build_simple_model(self, X, Y):
+    def simple_cnn_model(self, X, Y, batch_size):
          layer1, w_1 = self.conv_layer( X, [3, 3, 3, 1, 1], [1, 1, 1, 1, 1], "layer1_filters", '3d', True, True)
          layer2, w_3 = self.conv_layer( layer1, [3, 3, 3, 1, 1], [1, 1, 1, 1, 1], "layer2_filters", '3d', True, True)
          layer2 = self.pool(layer2,[1, 5, 9, 5, 1],[1, 5, 9, 5, 1] , 'max')
          layer2 = tf.reshape(layer2, [1, 972])
-         pyx = self.fcLayer(layer2, [ 972, 2])
+         pyx = self.fcLayer(layer2, [ 972, batch_size])
          return pyx
 
     def cnn_autoencoder(self, X, input):
         encode = []
         decode = []
-        layer1, w_1 = self.conv_layer( X, [5, 5, 5, 1, 1], [1, 1, 1, 1, 1], "layer1_filters", '3d', True)
-        layer1 = self.pool(layer1,[1, 5, 9, 5, 1],[1, 5, 9, 5, 1] , 'avg')
+        layer1, w_1 = self.conv_layer( X, [3, 3, 3, 1, 1], [1, 1, 1, 1, 1], "layer1_filters", '3d', True, True)
         encode.append(layer1)
-        layer3 = self.deconv_layer(layer1, tf.reshape(tf.pack([2.0, 2.0, 2.0, 1.0, 1.0]),[5,1,1,1,1]), [2, 45, 54, 45, 1], [1, 1, 1, 1, 1], padding='SAME', num_dim='3d')
+        layer3 = self.deconv_layer(layer1, [3, 3, 3, 1, 1], [32, 45, 54, 45, 1], [1, 1, 1, 1, 1], 'layer3_filters', '3d', True, False)
         decode.append(layer3)
 
         return encode, decode

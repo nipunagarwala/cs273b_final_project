@@ -4,6 +4,7 @@ import numpy as np
 import csv
 import itertools
 import matplotlib as ml
+ml.use("agg")
 import matplotlib.pyplot as plt
 import math
 
@@ -54,6 +55,11 @@ def loadfALFF(patientID):
 def sizeReduction(data, targetShape, opt, poolBox=(2,2,2), filename=None):
     """
     Reduces the dimensionality of the 3D data stored in data to targetShape
+
+    Example Usage:
+        data = loadfALFF(4)
+        avgPoolData = sizeReduction(data, (45, 54, 45), opt=1, poolBox=(2,2,2))
+        randomPollData1 = sizeReduction(data, (45, 54, 45), opt=2, poolBox=(2,2,2))
 
     @type   data        :   3D numpy matrix
     @param  data        :   3D data matrix to dimension reduce from
@@ -114,6 +120,10 @@ def sizeReduction(data, targetShape, opt, poolBox=(2,2,2), filename=None):
     return threeDMatRedux
 
 def loadfALFF_All():
+    """
+    Dumps pooled data under ./pooledData directory
+    Make sure you already have ./pooledData created
+    """
     for i in xrange(1,1072):
         if i%25==0:
             print i
@@ -126,24 +136,28 @@ def loadfALFF_All():
         sizeReduction(data, (45, 54, 45), opt=3, poolBox=(2,2,2), filename='pooledData/maxPool_'+str(i)+'_reduce2')
         sizeReduction(data, (30, 36, 30), opt=3, poolBox=(3,3,3), filename='pooledData/maxPool_'+str(i)+'_reduce3')
 
-def fALFF2ThreeDeeUsage():
-    data = loadfALFF(4)
+def mat2visual(mat, zLocs, filename):
+    """
+    Visualizes the input numpy matrix and saves it into a file
 
-    sizeReduction(data, (45, 54, 45), opt=3, poolBox=(2,2,2), filename='tmp')
+    Example Usage:
+        data = loadfALFF(4)
+        mat2visual(data, [40,45,50], 'example.png')
 
-    plt.subplot(2,2,1)
-    plt.imshow(data[:,:,44], cmap = "gray")
+    @type   mat         :   3D numpy matrix
+    @param  mat         :   3D data matrix to visualize
+    @type   zLocs       :   int array
+    @param  zLocs       :   Specifies the z positions to slice the mat matrix at
+    @type   filename    :   String
+    @param  filename    :   Name of the file to save the sliced brains to.
+    """
+    a,b,c = mat.shape
+    for i in range(len(zLocs)):
+        if zLocs[i]>=c:
+            print("An element %d in zLocs is larger than %d" %(zLocs[i],c))
+            return
+        plt.subplot(1,len(zLocs),i+1)
+        plt.title('z='+str(zLocs[i]))
+        plt.imshow(mat[:,:,zLocs[i]], cmap = "gray")
 
-    avgPoolData = sizeReduction(data, (45, 54, 45), opt=1, poolBox=(2,2,2))
-    plt.subplot(2,2,2)
-    plt.imshow(avgPoolData[:,:,22], cmap = "gray")
-
-    randomPollData1 = sizeReduction(data, (45, 54, 45), opt=2, poolBox=(2,2,2))
-    plt.subplot(2,2,3)
-    plt.imshow(randomPollData1[:,:,22], cmap = "gray")
-
-    randomPollData2 = sizeReduction(data, (45, 54, 45), opt=3, poolBox=(2,2,2))
-    plt.subplot(2,2,4)
-    plt.imshow(randomPollData2[:,:,22], cmap = "gray")
-
-    plt.show()
+    plt.savefig(filename)
