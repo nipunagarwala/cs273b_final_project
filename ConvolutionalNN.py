@@ -45,6 +45,8 @@ class ConvolutionalNN(object):
 
     def deconv_layer(self, prev_layer_out, filter_shape, out_shape, layer_stride, padding='SAME', num_dim = '2d'):
         nextLayer = None
+        print("The filter shape is: " + str(filter_shape.get_shape()))
+
         if num_dim == '3d':
             nextLayer = tf.nn.conv3d_transpose(prev_layer_out,filter_shape, out_shape, 
                             strides=layer_stride, padding='SAME')
@@ -52,7 +54,7 @@ class ConvolutionalNN(object):
             nextLayer = tf.nn.conv2d_transpose(prev_layer_out, filter_shape, out_shape, 
                             strides=layer_stride, padding='SAME')
         
-        return nextLayer, w_deconv
+        return nextLayer
         
     def pool(self, prev_layer, window_size, str_size, poolType = 'max'):
         next_layer = None
@@ -127,7 +129,7 @@ class ConvolutionalNN(object):
         layer1, w_1 = self.conv_layer( X, [5, 5, 5, 1, 1], [1, 1, 1, 1, 1], "layer1_filters", '3d', True)
         layer1 = self.pool(layer1,[1, 5, 9, 5, 1],[1, 5, 9, 5, 1] , 'avg')
         encode.append(layer1)
-        layer3, w_3 = self.deconv_layer(layer1, [2, 2, 2, 1, 1], [1, 45, 54, 45, 1], [1, 1, 1, 1, 1], padding='SAME', num_dim='3d')
+        layer3 = self.deconv_layer(layer1, tf.reshape(tf.pack([2.0, 2.0, 2.0, 1.0, 1.0]),[5,1,1,1,1]), [2, 45, 54, 45, 1], [1, 1, 1, 1, 1], padding='SAME', num_dim='3d')
         decode.append(layer3)
 
         return encode, decode

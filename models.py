@@ -12,12 +12,12 @@ def createModel():
     print("Creating the X and Y placeholder variables")
     X,Y, p_keep = simpleCnn.createVariables([2, 45, 54, 45, 1], [2, 45, 54, 45, 1])
     print("Building the CNN network")
-    convProb = simpleCnn.cnn_autoencoder(X, Y)
+    encode,decode = simpleCnn.cnn_autoencoder(X, Y)
     print("Building the cost function")
-    cost = simpleCnn.cost_function(convProb, Y)
+    cost = simpleCnn.cost_function(decode[0], Y)
     print("Building the optimization function")
     train_op = simpleCnn.minimization_function(cost, 0.001, 0.9, None)
-    predict_op = simpleCnn.prediction(convProb)
+    predict_op = simpleCnn.prediction(encode[0])
     return X, Y, predict_op, train_op
 
 
