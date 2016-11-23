@@ -64,7 +64,7 @@ def sizeReduction(data, targetShape, opt, poolBox=(2,2,2), filename=None):
                             opt=0: take the value in the middle
                             opt=1: average pooling
                             opt=2: random pooling
-                            opt=2: max pooling
+                            opt=3: max pooling
     @type   poolBox     :   3 element int list
     @param  poolBox     :   Size of the box to "pool" from
     @type   filename    :   String
@@ -104,7 +104,7 @@ def sizeReduction(data, targetShape, opt, poolBox=(2,2,2), filename=None):
                     elif opt == 2:
                         threeDMatRedux[x,y,z] = np.random.choice(np.asarray(box).reshape(-1))
                     # max sampling
-                    else:
+                    elif opt == 3:
                         threeDMatRedux[x,y,z] = np.max(box)
 
     # write out to a file if filename is specified
@@ -118,6 +118,7 @@ def loadfALFF_All():
         if i%25==0:
             print i
         data = loadfALFF(i)
+        np.save('pooledData/original_'+str(i), data)
         sizeReduction(data, (45, 54, 45), opt=1, poolBox=(2,2,2), filename='pooledData/avgPool_'+str(i)+'_reduce2')
         sizeReduction(data, (30, 36, 30), opt=1, poolBox=(3,3,3), filename='pooledData/avgPool_'+str(i)+'_reduce3')
         sizeReduction(data, (45, 54, 45), opt=2, poolBox=(2,2,2), filename='pooledData/randomPool_'+str(i)+'_reduce2')
