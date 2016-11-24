@@ -3,83 +3,72 @@ import numpy as np
 from utils import *
 from ConvolutionalNN import *
 from input_brain import *
+import copy
 
 
-batch_size = 32
+class ConvAutoEncoder(CNNLayers):
+
+    def __init__(self, input_shape, output_shape, batch_size=1, learning_rate=1e-3, beta1=0.99, beta2=0.99, op='Rmsprop'):
+        CNNLayers.__init__(self)
+        self.input, self.output, self.p_keep = self.createVariables(input_shape, output_shape, batch_size)
+        self.input_shape = input_shape
+        self.output_shape = output_shape
+        self.batch_size = batch_size
+        self.learning_rate = learning_rate
+        self.beta1 = beta1
+        self.beta2 = beta2
+        self.op = op
 
 
-def createAutoEncoderModel():
-    global batch_size
+    def build_model(self, num_layers_encode, filters, strides, names, relu, batch_norm):
+        weights = {}
+        layer_outputs = {}
+        weight_shapes = {}
+        encode = []
+        decode = []
 
-    print("Creating the Convolutional AutoEncoder Object")
-    simpleCnn = ConvolutionalNN()
+        prev_layer = self.input
+        weight_shapes['w0'] =  self.input.get_shape().as_list()
+        for i in range(num_layers_encode):
+            print("This is the index of layer: " + str(i))
+            layer_outputs['layer'+str(i+1)] ,weights['w'+str(i+1)] = self.conv_layer( prev_layer, filters[i], strides[i], names[i], '3d', 'SAME', relu[i], batch_norm[i])
+            prev_layer = layer_outputs['layer'+str(i+1)]
+            weight_shapes['w'+str(i+1)] = weights['w'+str(i+1)].get_shape().as_list()
 
-    print("Creating the X and Y placeholder variables")
-    X,Y, p_keep = simpleCnn.createVariables([batch_size, 45, 54, 45, 1], [batch_size, 45, 54, 45, 1], batch_size)
+        encode.append(prev_layer)
+        self.encode = prev_layer
 
-    print("Building the CNN network")
-    encode,decode = simpleCnn.cnn_autoencoder(X, batch_size)
-
-    print("Building the cost function")
-    cost = simpleCnn.cost_function(decode[0], X)
-
-    print("Building the optimization function")
-    train_op = simpleCnn.minimization_function(cost, 0.001, 0.95, None, opt='Rmsprop')
-
-    predict_op = simpleCnn.prediction(encode[0])
-    return X, Y, encode[0], decode[0], cost, train_op
-
-
-def createModel():
-    print("Creating the Convolutional Neural Network Object")
-    simpleCnn = ConvolutionalNN()
-
-    print("Creating the X and Y placeholder variables")
-    X,Y, p_keep = simpleCnn.createVariables([32, 45, 54, 45, 1], [32, 45, 54, 45, 1])
-    print("Building the CNN network")
-    encode,decode = simpleCnn.cnn_autoencoder(X, 32)
-    # convProb, wList = simpleCnn.simple_cnn_model(X, 32)
-
-    print("Building the cost function")
-    cost = simpleCnn.cost_function(decode[0], X)
-
-    print("Building the optimization function")
-    train_op = simpleCnn.minimization_function(cost, 0.001, 0.95, None, opt='Rmsprop')
-
-    return X, Y, encode[0], decode[0], train_op
+        # print("These are the layers added: " + str(layer_outputs))
+        
+        tot = 2*num_layers_encode
+        for i in range(num_layers_encode, tot):
+            print("This is the indexing for the reverse filters and weight shapes: " + str(i))
+            layer_outputs['layer'+str(i+1)] ,weights['w'+str(i+1)] = self.deconv_layer(layer_outputs['layer'+str(i)],filters[tot-i-1], weight_shapes['w'+str(tot-i-1)], strides[tot-i-1], names[i], '3d', 'SAME', relu[i], batch_norm[i])
+            prev_layer = layer_outputs['layer'+str(i+1)]
+            weight_shapes['w'+str(i+1)] = weights['w'+str(i+1)].get_shape().as_list()
 
 
+        # print("These are the layers added: " + str(weight_shapes))
+        decode.append(prev_layer)
+        self.decode = prev_layer
+
+        return layer_outputs, weights, weight_shapes, encode, decode
+
+    def train(self):
+        cost = self.cost_function(self.decode, self.input)
+        train_op = self.minimization_function(cost, self.learning_rate, self.beta1, self.beta2, self.op)
+        return cost, train_op
 
 
+# class ConvNN(CNNLayers):
 
 
-
-def main():
-    X, Y, encode, decode, cost, train_op = createAutoEncoderModel()
-    print("Created the entire model! YAY!")
-
-    # Launch the graph in a session
-    with tf.Session() as sess:
-
-        init_op = tf.group(tf.initialize_all_variables(), tf.initialize_local_variables())
-
-        init_op.run()
-        tf.train.start_queue_runners() 
-
-        for i in range(32):
-            print("Running iteration {} of TF Session".format(i))
-            _, loss = sess.run([train_op, cost])
-            print("The current loss is: " + str(loss))
-
-        encodeLayer = sess.run(encode)
-        decodeLayer = sess.run(decode)
-        print("Shape of encoded matrix: " + str(encodeLayer[16,:,:,:].shape))
-        mat2visual(encodeLayer[16,:,:,:, 0], [10, 15, 19], 'encodedImage.png')
-        mat2visual(decodeLayer[16,:,:,:, 0], [15, 25, 35], 'decodedImage.png')
+# class ResCNN(CNNLayers):
 
 
 
 
 
-if __name__ == "__main__":
-    main()
+
+
+

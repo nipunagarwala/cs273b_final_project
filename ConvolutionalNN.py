@@ -7,7 +7,7 @@ from utils import *
 # Define custom API for creating and adding layers to NN Model
 # Wrapper around Tensorflow API, for ease of use and readibility
 
-class NeuralNetwork(object):
+class Layers(object):
 
     def __init__(self):
         self.stdDev = 0.35
@@ -24,7 +24,7 @@ class NeuralNetwork(object):
         p_keep_conv = tf.placeholder("float")
         # return X,Y,p_keep_conv
 
-        X, Y = inputs(True, '/data/brain_binary_list.json', batch_size)
+        X, Y = inputs(True, '/data/train_brain_binary_list.json', batch_size)
         return X,Y,p_keep_conv
 
 
@@ -47,7 +47,7 @@ class NeuralNetwork(object):
 
     def cost_function(self, model_output, Y):
         # print("The shape of the model output is: " + str(model_output.get_shape()))
-        cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(model_output, Y))
+        cost = tf.reduce_sum(tf.square(model_output - Y))
         return cost
 
     def minimization_function(self, cost, learning_rate, beta1, beta2, opt='Rmsprop'):
@@ -70,13 +70,13 @@ class NeuralNetwork(object):
         return predict_op
 
 
-class ConvolutionalNN(NeuralNetwork):
+class CNNLayers(Layers):
 
     ''' Constructor for the ConvolutionalNN class. Initializes the
     std dev for the distributions used for weight initializations
     '''
     def __init__(self):
-        NeuralNetwork.__init__(self)
+        Layers.__init__(self)
         self.stdDev = 0.35
 
     def init_weights(self, shape):
@@ -172,30 +172,49 @@ class ConvolutionalNN(NeuralNetwork):
             decoding (reconstruction) layer
         '''
 
+        weightList = []
         encode = []
         decode = []
 
         ''' Build the Convolutional AutoEncoder, without pooling and unpooling. Tensorflow, as of now, does not 
             support unpooling.
         '''
-        layer1, w_1 = self.conv_layer( X, [5, 5, 5, 1, 1], [1, 1, 1, 1, 1], "layer1_filters", '3d', 'SAME', True, False)
-        layer2, w_2 = self.conv_layer( layer1, [3, 3, 3, 1, 1], [1, 1, 1, 1, 1], "layer2_filters", '3d', 'SAME', True, False)
-        layer3, w_3 = self.conv_layer( layer2, [3, 3, 3, 1, 1], [1, 1, 1, 1, 1], "layer3_filters", '3d', 'SAME', True, False)
-        encode.append(layer3)
+        layer1, w_1 = self.conv_layer( X, [3, 3, 3, 1, 1], [1, 1, 1, 1, 1], "layer1_filters", '3d', 'SAME', True, True)
+        layer2, w_2 = self.conv_layer( layer1, [3, 3, 3, 1, 1], [1, 1, 1, 1, 1], "layer2_filters", '3d', 'SAME', True, True)
+        layer3, w_3 = self.conv_layer( layer2, [3, 3, 3, 1, 1], [1, 1, 1, 1, 1], "layer3_filters", '3d', 'SAME', True, True)
+        layer4, w_4 = self.conv_layer( layer3, [3, 3, 3, 1, 1], [1, 2, 2, 2, 1], "layer4_filters", '3d', 'SAME', True, True)
+        layer5, w_5 = self.conv_layer( layer4, [3, 3, 3, 1, 1], [1, 2, 2, 2, 1], "layer5_filters", '3d', 'SAME', True, True)
+        encode.append(layer5)
+        weightList.append(w_1)
+        weightList.append(w_2)
+        weightList.append(w_3)
+        weightList.append(w_4)
+        weightList.append(w_5)
 
+        l4Shape = layer4.get_shape().as_list()
+        l3Shape = layer3.get_shape().as_list()
         l2Shape = layer2.get_shape().as_list()
         l1Shape = layer1.get_shape().as_list()
         XShape = X.get_shape().as_list()
 
-        print("This is the lowest dimension shape: " + str(layer3.get_shape().as_list()))
+        print("This is the lowest dimension shape: " + str(layer5.get_shape().as_list()))
 
-        layer4, w_4 = self.deconv_layer(layer3, [3, 3, 3, 1, 1], l2Shape, [1, 1, 1, 1, 1], 'layer4_filters', '3d', 'SAME', True, False)
-        layer5, w_5 = self.deconv_layer(layer4, [3, 3, 3, 1, 1], l1Shape, [1, 1, 1, 1, 1], 'layer5_filters', '3d', 'SAME', True, False)
-        layer6, w_6 = self.deconv_layer(layer5, [5, 5, 5, 1, 1], XShape, [1, 1, 1, 1, 1], 'layer6_filters', '3d', 'SAME', True, False)
-        decode.append(layer6)
+        layer6, w_6 = self.deconv_layer(layer5, [3, 3, 3, 1, 1], l4Shape, [1, 2, 2, 2, 1], 'layer6_filters', '3d', 'SAME', True, True)
+        layer7, w_7 = self.deconv_layer(layer6, [3, 3, 3, 1, 1], l3Shape, [1, 2, 2, 2, 1], 'layer7_filters', '3d', 'SAME', True, True)
+        layer8, w_8 = self.deconv_layer(layer7, [3, 3, 3, 1, 1], l2Shape, [1, 1, 1, 1, 1], 'layer8_filters', '3d', 'SAME', True, True)
+        layer9, w_9 = self.deconv_layer(layer8, [3, 3, 3, 1, 1], l1Shape, [1, 1, 1, 1, 1], 'layer9_filters', '3d', 'SAME', True, True)
+        layer10, w_10 = self.deconv_layer(layer9, [3, 3, 3, 1, 1], XShape, [1, 1, 1, 1, 1], 'layer10_filters', '3d', 'SAME', True, True)
+
+        weightList.append(w_6)
+        weightList.append(w_7)
+        weightList.append(w_8)
+        weightList.append(w_9)
+        weightList.append(w_10)
+
+        decode.append(layer10)
         # autoSess.close()
 
-        return encode, decode
+        return encode, decode, weightList
 
 
 

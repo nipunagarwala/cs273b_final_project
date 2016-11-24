@@ -17,9 +17,9 @@ def read_binary(filename_queue):
 	
 	# Calculate dimensions
 	label_bytes = 1
-	result.height = 45
-	result.width = 54
-	result.depth = 45
+	result.height = 91
+	result.width = 109
+	result.depth = 91
 	image_bytes = result.height * result.width * result.depth
 
 	# Every record has label followed by image
@@ -44,7 +44,7 @@ def read_binary(filename_queue):
 
 def _generate_image_and_label_batch(image, label, min_queue_examples, batch_size, shuffle):
 	# Create queue that shuffles examples and reads 'batch_size' images/labels from queue
-	train_preprocess_threads = 1
+	train_preprocess_threads = 16
 	test_preprocess_threads = 1         # TODO: subject to change- explain
 
 	if shuffle:
@@ -87,7 +87,7 @@ def inputs(train, data_list, batch_size):
 	# Create a queue that produces the filenames to read
 	if train:
 		num_examples_per_epoch = NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN
-		filename_queue = tf.train.string_input_producer(filenames, shuffle=True, num_epochs = 10) # num_epochs = 10
+		filename_queue = tf.train.string_input_producer(filenames, shuffle=True, num_epochs = 10)
 	else:
 		num_examples_per_epoch = NUM_EXAMPLES_PER_EPOCH_FOR_EVAL
         filename_queue = tf.train.string_input_producer(filenames, shuffle=False) 

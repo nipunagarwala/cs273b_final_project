@@ -46,7 +46,7 @@ def convert_brain_npy(brain_dir=BRAIN_DIR, phenotype_file=PHENOTYPE_FILE, output
 			pooled_brain = np.load(npy_path)
 			pooled_brain = pooled_brain.astype(np.float32)
 			
-			# create_feature_binary(pooled_brain, patient_label, bin_path)
+			create_feature_binary(pooled_brain, patient_label, bin_path)
 			path_list.append(bin_path)	
 	
 	return path_list
@@ -62,20 +62,20 @@ def split_brain_binaries(file_list, split_fraction=0.9, train_file=TRAIN_FILE, t
 	num_train = int(num_files * split_fraction)
 	
 	# Permute files
-    	perm = np.arange(num_files)
-    	np.random.shuffle(perm)
-    	file_list = [file_list[i] for i in perm]
+	perm = np.arange(num_files)
+	np.random.shuffle(perm)
+	file_list = [file_list[i] for i in perm]
 
-    	# Split file list
-    	train_files = file_list[:num_train]
-    	test_files = file_list[num_train:]	
+	# Split file list
+	train_files = file_list[:num_train]
+	test_files = file_list[num_train:]	
 
-	#with open(TRAIN_FILE, 'w') as outfile1:
-        #	json.dump(train_files, outfile1)
-    	#with open(TEST_FILE, 'w') as outfile2:
-        #	json.dump(test_files, outfile2)
-	print train_files
-	print test_files
+	with open(TRAIN_FILE, 'w') as outfile1:
+		json.dump(train_files, outfile1)
+
+	with open(TEST_FILE, 'w') as outfile2:
+		json.dump(test_files, outfile2)
+
 
 def main():
 	file_list = convert_brain_npy()
