@@ -18,13 +18,13 @@ class NeuralNetwork(object):
     def init_weights(self, shape):
         return tf.Variable(tf.random_normal(shape, stddev=self.stdDev))
 
-    def createVariables(self, x_shape, y_shape):
+    def createVariables(self, x_shape, y_shape, batch_size):
         # X = tf.placeholder("float", x_shape)
         # Y = tf.placeholder("float", y_shape)
         p_keep_conv = tf.placeholder("float")
         # return X,Y,p_keep_conv
 
-        X, Y = inputs(True, '/data/brain_binary_list.json', 32)
+        X, Y = inputs(True, '/data/brain_binary_list.json', batch_size)
         return X,Y,p_keep_conv
 
 
@@ -82,7 +82,7 @@ class ConvolutionalNN(NeuralNetwork):
     def init_weights(self, shape):
         return tf.Variable(tf.random_normal(shape, stddev=self.stdDev))
 
-    def conv_layer(self, prev_layer_out, w_shape, layer_stride, w_name, num_dim = '2d', if_relu = True, batchNorm = True):
+    def conv_layer(self, prev_layer_out, w_shape, layer_stride, w_name, num_dim = '2d', padding='SAME',if_relu = True, batchNorm = True):
         w_conv = tf.Variable(tf.random_normal(w_shape, stddev=self.stdDev),
                           name=w_name)
         
@@ -92,10 +92,10 @@ class ConvolutionalNN(NeuralNetwork):
         nextLayer = None
         if num_dim == '3d':
             nextLayer = tf.add(tf.nn.conv3d(prev_layer_out, w_conv, 
-                            strides=layer_stride, padding='SAME',name=w_name),b)
+                            strides=layer_stride, padding=padding,name=w_name),b)
         else:
             nextLayer = tf.add(tf.nn.conv2d(prev_layer_out, w_conv, 
-                            strides=layer_stride, padding='SAME',name=w_name),b)
+                            strides=layer_stride, padding=padding,name=w_name),b)
 
         if batchNorm:
             nextLayer = self.batch_norm(nextLayer, [numFilters], [numFilters], [numFilters], [numFilters])
@@ -107,7 +107,7 @@ class ConvolutionalNN(NeuralNetwork):
         return nextLayer, w_conv
 
 
-    def deconv_layer(self, prev_layer_out, filter_shape, out_shape, layer_stride, w_name, num_dim = '2d', if_relu = True, batchNorm = True):
+    def deconv_layer(self, prev_layer_out, filter_shape, out_shape, layer_stride, w_name, num_dim = '2d',padding='SAME', if_relu = True, batchNorm = True):
         w_deconv = tf.Variable(tf.random_normal(filter_shape, stddev=self.stdDev),
                           name=w_name)
 
@@ -119,10 +119,10 @@ class ConvolutionalNN(NeuralNetwork):
 
         if num_dim == '3d':
             nextLayer = tf.add(tf.nn.conv3d_transpose(prev_layer_out, w_deconv, out_shape, 
-                            strides=layer_stride, padding='SAME'),b)
+                            strides=layer_stride, padding=padding),b)
         else:
             nextLayer = tf.add(tf.nn.conv2d_transpose(prev_layer_out, w_deconv, out_shape, 
-                            strides=layer_stride, padding='SAME'),b)
+                            strides=layer_stride, padding=padding),b)
 
         if batchNorm:
             nextLayer = self.batch_norm(nextLayer, [numFilters], [numFilters], [numFilters], [numFilters])
@@ -131,14 +131,14 @@ class ConvolutionalNN(NeuralNetwork):
             nextLayer = self.relu(nextLayer)
 
         
-        return nextLayer
+        return nextLayer, w_deconv
         
     def pool(self, prev_layer, window_size, str_size, poolType = 'max'):
         next_layer = None
         if poolType == 'max':
             next_layer = tf.nn.max_pool3d(prev_layer, ksize=window_size,
                             strides=str_size, padding='SAME')
-        if poolType == 'avg':
+        elif poolType == 'avg':
             next_layer = tf.nn.avg_pool3d(prev_layer, ksize=window_size,
                             strides=str_size, padding='SAME')
 
@@ -152,7 +152,7 @@ class ConvolutionalNN(NeuralNetwork):
         return tf.maximum(x, leak*x)
 
 
-    def residual_connect(self, input_layer, output_layer):
+    def residual_unit(self, input_layer, output_layer):
         res = input_layer + output_layer
         return res
 
@@ -168,12 +168,32 @@ class ConvolutionalNN(NeuralNetwork):
         return pyx, wList
 
     def cnn_autoencoder(self, X, batch_size):
+        ''' Have lists to store the outputs of the encoding (dimension reduction) layer and
+            decoding (reconstruction) layer
+        '''
+
         encode = []
         decode = []
-        layer1, w_1 = self.conv_layer( X, [3, 3, 3, 1, 1], [1, 1, 1, 1, 1], "layer1_filters", '3d', True, True)
-        encode.append(layer1)
-        layer3 = self.deconv_layer(layer1, [3, 3, 3, 1, 1], [batch_size, 45, 54, 45, 1], [1, 1, 1, 1, 1], 'layer3_filters', '3d', True, False)
-        decode.append(layer3)
+
+        ''' Build the Convolutional AutoEncoder, without pooling and unpooling. Tensorflow, as of now, does not 
+            support unpooling.
+        '''
+        layer1, w_1 = self.conv_layer( X, [5, 5, 5, 1, 1], [1, 1, 1, 1, 1], "layer1_filters", '3d', 'SAME', True, False)
+        layer2, w_2 = self.conv_layer( layer1, [3, 3, 3, 1, 1], [1, 1, 1, 1, 1], "layer2_filters", '3d', 'SAME', True, False)
+        layer3, w_3 = self.conv_layer( layer2, [3, 3, 3, 1, 1], [1, 1, 1, 1, 1], "layer3_filters", '3d', 'SAME', True, False)
+        encode.append(layer3)
+
+        l2Shape = layer2.get_shape().as_list()
+        l1Shape = layer1.get_shape().as_list()
+        XShape = X.get_shape().as_list()
+
+        print("This is the lowest dimension shape: " + str(layer3.get_shape().as_list()))
+
+        layer4, w_4 = self.deconv_layer(layer3, [3, 3, 3, 1, 1], l2Shape, [1, 1, 1, 1, 1], 'layer4_filters', '3d', 'SAME', True, False)
+        layer5, w_5 = self.deconv_layer(layer4, [3, 3, 3, 1, 1], l1Shape, [1, 1, 1, 1, 1], 'layer5_filters', '3d', 'SAME', True, False)
+        layer6, w_6 = self.deconv_layer(layer5, [5, 5, 5, 1, 1], XShape, [1, 1, 1, 1, 1], 'layer6_filters', '3d', 'SAME', True, False)
+        decode.append(layer6)
+        # autoSess.close()
 
         return encode, decode
 
