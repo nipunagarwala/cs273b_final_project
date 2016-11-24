@@ -3,7 +3,7 @@ import numpy as np
 import json
 
 # Train and evaliation epoch definition
-NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN = 2
+NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN = 1000
 NUM_EXAMPLES_PER_EPOCH_FOR_EVAL = 200
 
 def read_binary(filename_queue):
@@ -87,7 +87,7 @@ def inputs(train, data_list, batch_size):
 	# Create a queue that produces the filenames to read
 	if train:
 		num_examples_per_epoch = NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN
-		filename_queue = tf.train.string_input_producer(filenames, shuffle=True)
+		filename_queue = tf.train.string_input_producer(filenames, shuffle=True, num_epochs = 10) # num_epochs = 10
 	else:
 		num_examples_per_epoch = NUM_EXAMPLES_PER_EPOCH_FOR_EVAL
         filename_queue = tf.train.string_input_producer(filenames, shuffle=False) 

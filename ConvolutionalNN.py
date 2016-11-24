@@ -7,22 +7,86 @@ from utils import *
 # Define custom API for creating and adding layers to NN Model
 # Wrapper around Tensorflow API, for ease of use and readibility
 
-class ConvolutionalNN(object):
+class NeuralNetwork(object):
 
     def __init__(self):
         self.stdDev = 0.35
 
-
+    ''' Initializes the weights based on the std dev set in the constructor
+    
+    '''
     def init_weights(self, shape):
         return tf.Variable(tf.random_normal(shape, stddev=self.stdDev))
 
+    def createVariables(self, x_shape, y_shape):
+        # X = tf.placeholder("float", x_shape)
+        # Y = tf.placeholder("float", y_shape)
+        p_keep_conv = tf.placeholder("float")
+        # return X,Y,p_keep_conv
+
+        X, Y = inputs(True, '/data/brain_binary_list.json', 32)
+        return X,Y,p_keep_conv
+
+
+    def dropout(self, prev_layer,  p_keep):
+        next_layer = tf.nn.dropout(prev_layer, p_keep)
+        return next_layer
+
+    def batch_norm(self, prev_layer, mu_shape, sig_shape, beta_shape,scale_shape, var_eps = 1e-6):
+        mu = self.init_weights(mu_shape)
+        sigma = self.init_weights(sig_shape)
+        beta = self.init_weights(beta_shape)
+        scale = self.init_weights(scale_shape)
+        next_layer = tf.nn.batch_normalization(prev_layer, mu, sigma, beta, scale, var_eps)
+        return next_layer
+
+    def fcLayer(self, prev_layer, shape):
+        wOut = self.init_weights(shape)
+        pyx = tf.matmul(prev_layer, wOut)
+        return pyx
+
+    def cost_function(self, model_output, Y):
+        # print("The shape of the model output is: " + str(model_output.get_shape()))
+        cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(model_output, Y))
+        return cost
+
+    def minimization_function(self, cost, learning_rate, beta1, beta2, opt='Rmsprop'):
+        train_op = None
+        if opt == 'Rmsprop':
+            train_op = tf.train.RMSPropOptimizer(learning_rate, beta1).minimize(cost)
+        elif opt == 'adam':
+            train_op = tf.train.AdamOptimizer(learning_rate, beta1, beta2).minimize(cost)
+        elif opt == 'adagrad':
+            train_op = tf.train.AdagradOptimizer(learning_rate, initial_accumulator_value=0.1).minimize(cost)
+
+        return train_op
+
+    def add_regularization(self, loss, wgt, lmbda):
+        nextLoss = loss + lmbda*tf.nn.l2_loss(wgt)
+        return nextLoss
+
+    def prediction(self, model_output):
+        predict_op = tf.argmax(model_output, 1)
+        return predict_op
+
+
+class ConvolutionalNN(NeuralNetwork):
+
+    ''' Constructor for the ConvolutionalNN class. Initializes the
+    std dev for the distributions used for weight initializations
+    '''
+    def __init__(self):
+        NeuralNetwork.__init__(self)
+        self.stdDev = 0.35
+
+    def init_weights(self, shape):
+        return tf.Variable(tf.random_normal(shape, stddev=self.stdDev))
 
     def conv_layer(self, prev_layer_out, w_shape, layer_stride, w_name, num_dim = '2d', if_relu = True, batchNorm = True):
         w_conv = tf.Variable(tf.random_normal(w_shape, stddev=self.stdDev),
                           name=w_name)
         
         numFilters = w_shape[len(w_shape)-1]
-        # print("This is the num filters: " + str(numFilters))
         b = tf.Variable(tf.random_normal([numFilters], stddev=self.stdDev))
 
         nextLayer = None
@@ -39,7 +103,6 @@ class ConvolutionalNN(object):
         if if_relu:
             nextLayer = self.relu(nextLayer)
 
-        print("The shape of this Weights is: " + str(w_conv.get_shape()))
         
         return nextLayer, w_conv
 
@@ -81,18 +144,6 @@ class ConvolutionalNN(object):
 
         return next_layer
 
-    def dropout(self, prev_layer,  p_keep):
-        next_layer = tf.nn.dropout(prev_layer, p_keep)
-        return next_layer
-
-    def batch_norm(self, prev_layer, mu_shape, sig_shape, beta_shape,scale_shape, var_eps = 1e-6):
-        mu = self.init_weights(mu_shape)
-        sigma = self.init_weights(sig_shape)
-        beta = self.init_weights(beta_shape)
-        scale = self.init_weights(scale_shape)
-        next_layer = tf.nn.batch_normalization(prev_layer, mu, sigma, beta, scale, var_eps)
-        return next_layer
-
     def relu(self, prev_layer):
         next_layer = tf.nn.relu(prev_layer)
         return next_layer
@@ -100,49 +151,28 @@ class ConvolutionalNN(object):
     def lrelu(x, leak=0.2, name="lrelu"):
         return tf.maximum(x, leak*x)
 
-    def fcLayer(self, prev_layer, shape):
-        wOut = self.init_weights(shape)
-        pyx = tf.matmul(prev_layer, wOut)
-        return pyx
 
+    def residual_connect(self, input_layer, output_layer):
+        res = input_layer + output_layer
+        return res
 
-    def createVariables(self, x_shape, y_shape):
-        X = tf.placeholder("float", x_shape)
-        Y = tf.placeholder("float", y_shape)
-        p_keep_conv = tf.placeholder("float")
-        return X,Y,p_keep_conv
+    def simple_cnn_model(self, X, batch_size):
+        wList = []
+        layer1, w_1 = self.conv_layer( X, [3, 3, 3, 1, 1], [1, 1, 1, 1, 1], "layer1_filters", '3d', True, True)
+        layer2, w_3 = self.conv_layer( layer1, [3, 3, 3, 1, 1], [1, 1, 1, 1, 1], "layer2_filters", '3d', True, True)
+        layer2 = self.pool(layer2,[1, 5, 9, 5, 1],[1, 5, 9, 5, 1] , 'max')
+        layer2 = tf.reshape(layer2, [1, 15552])
+        pyx = self.fcLayer(layer2, [ 15552, batch_size])
+        wList.append(w_1)
+        wList.append(w_3)
+        return pyx, wList
 
-        # input_x, input_y = inputs(True, '/data/brain_binary_list.json', 2)
-        # print("The shape of the Y input is: " + str(input_y.get_shape()))
-        return input_x, input_y, p_keep_conv
-
-    def cost_function(self, model_output, Y):
-        cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(model_output, Y))
-        return cost
-
-    def minimization_function(self, cost, learning_rate, beta1, beta2):
-        train_op = tf.train.RMSPropOptimizer(learning_rate, beta1).minimize(cost)
-        return train_op
-
-    def prediction(self, model_output):
-        predict_op = tf.argmax(model_output, 1)
-        return predict_op
-
-
-    def simple_cnn_model(self, X, Y, batch_size):
-         layer1, w_1 = self.conv_layer( X, [3, 3, 3, 1, 1], [1, 1, 1, 1, 1], "layer1_filters", '3d', True, True)
-         layer2, w_3 = self.conv_layer( layer1, [3, 3, 3, 1, 1], [1, 1, 1, 1, 1], "layer2_filters", '3d', True, True)
-         layer2 = self.pool(layer2,[1, 5, 9, 5, 1],[1, 5, 9, 5, 1] , 'max')
-         layer2 = tf.reshape(layer2, [1, 972])
-         pyx = self.fcLayer(layer2, [ 972, batch_size])
-         return pyx
-
-    def cnn_autoencoder(self, X, input):
+    def cnn_autoencoder(self, X, batch_size):
         encode = []
         decode = []
         layer1, w_1 = self.conv_layer( X, [3, 3, 3, 1, 1], [1, 1, 1, 1, 1], "layer1_filters", '3d', True, True)
         encode.append(layer1)
-        layer3 = self.deconv_layer(layer1, [3, 3, 3, 1, 1], [32, 45, 54, 45, 1], [1, 1, 1, 1, 1], 'layer3_filters', '3d', True, False)
+        layer3 = self.deconv_layer(layer1, [3, 3, 3, 1, 1], [batch_size, 45, 54, 45, 1], [1, 1, 1, 1, 1], 'layer3_filters', '3d', True, False)
         decode.append(layer3)
 
         return encode, decode
