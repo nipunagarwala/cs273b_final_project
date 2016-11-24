@@ -22,6 +22,8 @@ def createAutoEncoderModel():
     allRelu = [True]*4
     allBatch = [True]*4
     layer_outputs, weights, weight_shapes, encode, decode = cae.build_model(2, allFilters, allStrides, allNames, allRelu, allBatch)
+    
+    print("Setting up the Training model of the Autoencoder")
     cost, train_op = cae.train()
     return layer_outputs, weights, weight_shapes, encode, decode, cost, train_op
 
@@ -54,8 +56,8 @@ def createModel():
 
 
 def main():
-    # layer_outputs, weights, weight_shapes, encode, decode, cost, train_op = createAutoEncoderModel()
-    X, Y, encode, decode, cost, train_op = createModel()
+    layer_outputs, weights, weight_shapes, encode, decode, cost, train_op = createAutoEncoderModel()
+    # X, Y, encode, decode, cost, train_op = createModel()
     print("Created the entire model! YAY!")
 
     # Launch the graph in a session

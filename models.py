@@ -23,36 +23,31 @@ class ConvAutoEncoder(CNNLayers):
     def build_model(self, num_layers_encode, filters, strides, names, relu, batch_norm):
         weights = {}
         layer_outputs = {}
-        weight_shapes = {}
+        layer_shapes = {}
         encode = []
         decode = []
 
         prev_layer = self.input
-        weight_shapes['w0'] =  self.input.get_shape().as_list()
+        layer_shapes['w0'] =  self.input.get_shape().as_list()
         for i in range(num_layers_encode):
-            print("This is the index of layer: " + str(i))
             layer_outputs['layer'+str(i+1)] ,weights['w'+str(i+1)] = self.conv_layer( prev_layer, filters[i], strides[i], names[i], '3d', 'SAME', relu[i], batch_norm[i])
             prev_layer = layer_outputs['layer'+str(i+1)]
-            weight_shapes['w'+str(i+1)] = weights['w'+str(i+1)].get_shape().as_list()
+            layer_shapes['w'+str(i+1)] = prev_layer.get_shape().as_list()
 
         encode.append(prev_layer)
         self.encode = prev_layer
-
-        # print("These are the layers added: " + str(layer_outputs))
         
-        tot = 2*num_layers_encode
+        tot = 2*num_layers_encode #4 layers
         for i in range(num_layers_encode, tot):
-            print("This is the indexing for the reverse filters and weight shapes: " + str(i))
-            layer_outputs['layer'+str(i+1)] ,weights['w'+str(i+1)] = self.deconv_layer(layer_outputs['layer'+str(i)],filters[tot-i-1], weight_shapes['w'+str(tot-i-1)], strides[tot-i-1], names[i], '3d', 'SAME', relu[i], batch_norm[i])
+            layer_outputs['layer'+str(i+1)] ,weights['w'+str(i+1)] = self.deconv_layer(prev_layer,filters[tot-i-1], layer_shapes['w'+str(tot-i-1)], strides[tot-i-1], names[i], '3d', 'SAME', relu[i], batch_norm[i])
             prev_layer = layer_outputs['layer'+str(i+1)]
-            weight_shapes['w'+str(i+1)] = weights['w'+str(i+1)].get_shape().as_list()
+            layer_shapes['w'+str(i+1)] = prev_layer.get_shape().as_list()
 
 
-        # print("These are the layers added: " + str(weight_shapes))
         decode.append(prev_layer)
         self.decode = prev_layer
 
-        return layer_outputs, weights, weight_shapes, encode, decode
+        return layer_outputs, weights, layer_shapes, encode, decode
 
     def train(self):
         cost = self.cost_function(self.decode, self.input)
