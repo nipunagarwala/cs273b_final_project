@@ -12,22 +12,23 @@ batch_size = 32
 def createAutoEncoderModel():
     global batch_size
 
+    numForwardLayers = 4
     print("Creating the Convolutional AutoEncoder Object")
     cae = ConvAutoEncoder([batch_size, 45, 54, 45, 1], [batch_size, 45, 54, 45, 1], batch_size, 0.001, 0.99, None, op='Rmsprop')
 
-    allFilters = [[3, 3, 3, 1, 1],[3, 3, 3, 1, 1]]
-    allStrides = [[1, 1, 1, 1, 1],[1, 2, 2, 2, 1]]
+    allFilters = [[3, 3, 3, 1, 10],[3, 3, 3, 10, 10], [3, 3, 3, 10, 1], [3, 3, 3, 1, 1]]
+    allStrides = [[1, 1, 1, 1, 1],[1, 1, 1, 1, 1],[1, 2, 2, 2, 1], [1, 1, 1, 1, 1]]
     allNames = ["layer1_filters","layer2_filters","layer3_filters","layer4_filters","layer5_filters","layer6_filters",
                 "layer7_filters","layer8_filters","layer9_filters","layer10_filters"]
-    allRelu = [True]*4
-    allBatch = [False]*4
+    allRelu = [True]*numForwardLayers*2
+    allBatch = [False]*numForwardLayers*2
 
     # We do not need ReLUs in the encoder layer and the decode layer
-    allRelu[1] = False
-    allRelu[3] = False
-    allBatch[1] = False
-    allBatch[3] = False
-    layer_outputs, weights, weight_shapes, encode, decode = cae.build_model(2, allFilters, allStrides, allNames, allRelu, allBatch)
+    allRelu[numForwardLayers-1] = False
+    allRelu[2*numForwardLayers-1] = False
+    allBatch[numForwardLayers-1] = False
+    allBatch[2*numForwardLayers-1] = False
+    layer_outputs, weights, weight_shapes, encode, decode = cae.build_model(numForwardLayers, allFilters, allStrides, allNames, allRelu, allBatch)
 
     print("Setting up the Training model of the Autoencoder")
     cost, train_op = cae.train()

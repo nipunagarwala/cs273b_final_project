@@ -43,10 +43,12 @@ class ConvAutoEncoder(CNNLayers):
         
         tot = 2*num_layers_encode #4 layers
         for i in range(num_layers_encode, tot):
+            print(filters[tot-i-1])
             layer_outputs['layer'+str(i+1)] ,weights['w'+str(i+1)] = self.deconv_layer(prev_layer,filters[tot-i-1], layer_shapes['w'+str(tot-i-1)], strides[tot-i-1], names[i], '3d', 'SAME', relu[i], batch_norm[i])
             prev_layer = layer_outputs['layer'+str(i+1)]
             layer_shapes['w'+str(i+1)] = prev_layer.get_shape().as_list()
 
+        print("The decoded image size is: " + str(prev_layer.get_shape().as_list()))
 
         decode.append(prev_layer)
         self.decode = prev_layer
