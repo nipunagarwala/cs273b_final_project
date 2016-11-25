@@ -32,6 +32,10 @@ class Layers(object):
         next_layer = tf.nn.dropout(prev_layer, p_keep)
         return next_layer
 
+    def sigmoid(self, prev_layer):
+        next_layer = tf.sigmoid(prev_layer)
+        return next_layer
+
     def batch_norm(self, prev_layer, mu_shape, sig_shape, beta_shape,scale_shape, var_eps = 1e-3):
         mu = self.init_weights(mu_shape)
         sigma = self.init_weights(sig_shape)
@@ -40,14 +44,21 @@ class Layers(object):
         next_layer = tf.nn.batch_normalization(prev_layer, mu, sigma, beta, scale, var_eps)
         return next_layer
 
-    def fcLayer(self, prev_layer, shape):
-        wOut = self.init_weights(shape)
-        pyx = tf.matmul(prev_layer, wOut)
-        return pyx
+    def fcLayer(self, prev_layer, wshape):
+        wOut = self.init_weights(wshape)
+        b = self.init_weights([wshape[1]])
+        pyx = tf.add(tf.matmul(prev_layer, wOut), b)
+        return pyx, wOut
 
-    def cost_function(self, model_output, Y):
-        # print("The shape of the model output is: " + str(model_output.get_shape()))
-        cost = tf.reduce_mean(tf.square(model_output - Y))
+    def cost_function(self, model_output, Y, op='square'):
+        cost = None
+        if  op == 'square':
+            cost = tf.reduce_mean(tf.square(model_output - Y))
+        elif op == 'cross-entropy':
+            cost = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(model_output, Y))
+        elif op == 'softmax':
+            cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(model_output, Y))
+            
         return cost
 
     def minimization_function(self, cost, learning_rate, beta1, beta2, opt='Rmsprop'):
@@ -64,7 +75,7 @@ class Layers(object):
     def add_regularization(self, loss, wgt, lmbda, rho, op='kl'):
         nextLoss = None
         if op == 'l2':
-            nextLoss = tf.add(loss, lmbda*tf.nn.l2_loss(wgt))
+            nextLoss = tf.add(loss, tf.mul(lmbda,tf.nn.l2_loss(wgt)))
         elif op == 'kl':
             nextLoss = tf.add(loss, tf.mul(lmbda, self.kl_sparse_regularization(wgt, lmbda, rho)))
         return nextLoss
@@ -171,17 +182,6 @@ class CNNLayers(Layers):
     def residual_unit(self, input_layer, output_layer):
         res = input_layer + output_layer
         return res
-
-    def simple_cnn_model(self, X, batch_size):
-        wList = []
-        layer1, w_1 = self.conv_layer( X, [3, 3, 3, 1, 1], [1, 1, 1, 1, 1], "layer1_filters", '3d', True, True)
-        layer2, w_3 = self.conv_layer( layer1, [3, 3, 3, 1, 1], [1, 1, 1, 1, 1], "layer2_filters", '3d', True, True)
-        layer2 = self.pool(layer2,[1, 5, 9, 5, 1],[1, 5, 9, 5, 1] , 'max')
-        layer2 = tf.reshape(layer2, [1, 15552])
-        pyx = self.fcLayer(layer2, [ 15552, batch_size])
-        wList.append(w_1)
-        wList.append(w_3)
-        return pyx, wList
 
 
 

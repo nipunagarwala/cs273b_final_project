@@ -8,6 +8,8 @@ ml.use("agg")
 import matplotlib.pyplot as plt
 import math
 
+from mpl_toolkits.axes_grid1 import make_axes_locatable
+
 brainSz = (91,109,91)
 falffSz = 175493
 
@@ -136,7 +138,7 @@ def loadfALFF_All():
         sizeReduction(data, (45, 54, 45), opt=3, poolBox=(2,2,2), filename='pooledData/maxPool_'+str(i)+'_reduce2')
         sizeReduction(data, (30, 36, 30), opt=3, poolBox=(3,3,3), filename='pooledData/maxPool_'+str(i)+'_reduce3')
 
-def mat2visual(mat, zLocs, filename):
+def mat2visual(mat, zLocs, filename, valRange=(0,1)):
     """
     Visualizes the input numpy matrix and saves it into a file
 
@@ -150,14 +152,23 @@ def mat2visual(mat, zLocs, filename):
     @param  zLocs       :   Specifies the z positions to slice the mat matrix at
     @type   filename    :   String
     @param  filename    :   Name of the file to save the sliced brains to.
+    @type   valRange    :   int tuple
+    @param  valRange    :   Specifies the maximum and minimum values of the colorbar used in imshow.
     """
-    a,b,c = mat.shape
+
+    _,_,c = mat.shape
     for i in range(len(zLocs)):
         if zLocs[i]>=c:
             print("An element %d in zLocs is larger than %d" %(zLocs[i],c))
             return
         plt.subplot(1,len(zLocs),i+1)
         plt.title('z='+str(zLocs[i]))
-        plt.imshow(mat[:,:,zLocs[i]], cmap = "gray")
+        plt.imshow(mat[:,:,zLocs[i]], vmin=min(valRange), vmax=max(valRange), cmap = "gray", interpolation='none')
+    
+    ax = plt.gca()
+    divider = make_axes_locatable(ax)
+    cax = divider.append_axes("right", size="5%", pad=0.1)
+    plt.colorbar(cax=cax)
 
     plt.savefig(filename)
+    
