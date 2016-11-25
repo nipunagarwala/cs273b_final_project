@@ -4,16 +4,23 @@ from utils import *
 from ConvolutionalNN import *
 from models import *
 from input_brain import *
+import os
 
+FLAGS = tf.app.flags.FLAGS
 
-batch_size = 32
+tf.app.flags.DEFINE_string('train_dir', '/data/train',
+                           """Directory where to write event logs """)
+tf.app.flags.DEFINE_string('checkpoint_dir', '/data/ckpt',
+                           """Directory where to write checkpoints """)
+tf.app.flags.DEFINE_integer('max_steps', 100,
+                            """Number of batches to run.""")
+tf.app.flags.DEFINE_integer('batch_size', 32,
+                            """Batch size being fed in.""")
 
 
 def createAutoEncoderModel():
-    global batch_size
-
     print("Creating the Convolutional AutoEncoder Object")
-    cae = ConvAutoEncoder([batch_size, 45, 54, 45, 1], [batch_size, 45, 54, 45, 1], batch_size, 0.001, 0.99, None, op='Rmsprop')
+    cae = ConvAutoEncoder([FLAGS.batch_size, 45, 54, 45, 1], [FLAGS.batch_size, 45, 54, 45, 1], FLAGS.batch_size, 0.001, 0.99, None, op='Rmsprop')
 
     allFilters = [[3, 3, 3, 1, 1],[3, 3, 3, 1, 1]]
     allStrides = [[1, 1, 1, 1, 1],[1, 2, 2, 2, 1]]
@@ -34,7 +41,7 @@ def createAutoEncoderModel():
     return layer_outputs, weights, weight_shapes, encode, decode, cost, train_op
 
 
-    
+
 
 
 def createModel():
@@ -66,18 +73,36 @@ def main():
     # X, Y, encode, decode, cost, train_op = createModel()
     print("Created the entire model! YAY!")
 
+    # Create a saver
+    saver = tf.train.Saver(tf.all_variables())
+
     # Launch the graph in a session
     with tf.Session() as sess:
 
         init_op = tf.group(tf.initialize_all_variables(), tf.initialize_local_variables())
 
         init_op.run()
-        tf.train.start_queue_runners() 
+        tf.train.start_queue_runners()
 
-        for i in range(100):
+        # Get checkpoint at step: i_stopped
+        ckpt = tf.train.get_checkpoint_state(FLAGS.checkpoint_dir)
+        if ckpt and ckpt.model_checkpoint_path:
+            saver.restore(sess, ckpt.model_checkpoint_path)
+            print(ckpt.model_checkpoint_path)
+            i_stopped = int(ckpt.model_checkpoint_path.split('/')[-1].split('-')[-1])
+        else:
+            print('No checkpoint file found!')
+            i_stopped = 0
+
+        for i in range(i_stopped, FLAGS.max_steps):
             print("Running iteration {} of TF Session".format(i))
             _, loss = sess.run([train_op, cost])
             print("The current loss is: " + str(loss))
+
+            # Checkpoint model at each 10 iterations
+            if i != 0 and i % 10 == 0 or (i+1) == FLAGS.max_steps:
+                checkpoint_path = os.path.join(FLAGS.checkpoint_dir, 'model.ckpt')
+                saver.save(sess, checkpoint_path, global_step=i)
 
         encodeLayer = np.asarray(sess.run(encode))
         decodeLayer = np.asarray(sess.run(decode))
