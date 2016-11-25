@@ -32,7 +32,7 @@ class Layers(object):
         next_layer = tf.nn.dropout(prev_layer, p_keep)
         return next_layer
 
-    def batch_norm(self, prev_layer, mu_shape, sig_shape, beta_shape,scale_shape, var_eps = 1e-6):
+    def batch_norm(self, prev_layer, mu_shape, sig_shape, beta_shape,scale_shape, var_eps = 1e-3):
         mu = self.init_weights(mu_shape)
         sigma = self.init_weights(sig_shape)
         beta = self.init_weights(beta_shape)
@@ -47,7 +47,7 @@ class Layers(object):
 
     def cost_function(self, model_output, Y):
         # print("The shape of the model output is: " + str(model_output.get_shape()))
-        cost = tf.reduce_sum(tf.square(model_output - Y))
+        cost = tf.reduce_mean(tf.square(model_output - Y))
         return cost
 
     def minimization_function(self, cost, learning_rate, beta1, beta2, opt='Rmsprop'):
@@ -61,9 +61,25 @@ class Layers(object):
 
         return train_op
 
-    def add_regularization(self, loss, wgt, lmbda):
-        nextLoss = loss + lmbda*tf.nn.l2_loss(wgt)
+    def add_regularization(self, loss, wgt, lmbda, rho, op='kl'):
+        nextLoss = None
+        if op == 'l2':
+            nextLoss = tf.add(loss, lmbda*tf.nn.l2_loss(wgt))
+        elif op == 'kl':
+            nextLoss = tf.add(loss, tf.mul(lmbda, self.kl_sparse_regularization(wgt, lmbda, rho)))
         return nextLoss
+
+    def kl_sparse_regularization(self, wgt, lmbda, rho):
+        rho_hat = tf.reduce_mean(wgt)
+        invrho = tf.sub(tf.constant(1.), rho)
+        invrhohat = tf.sub(tf.constant(1.), rho_hat)
+        logrho = tf.add(self.logfunc(rho,rho_hat), self.logfunc(invrho, invrhohat))
+        return logrho
+
+    def logfunc(self, x1, x2):
+        clippDiv = tf.clip_by_value(tf.div(x1,x2),1e-12,1e10)
+        return tf.mul( x1,tf.log(clippDiv))
+
 
     def prediction(self, model_output):
         predict_op = tf.argmax(model_output, 1)

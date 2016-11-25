@@ -20,9 +20,15 @@ def createAutoEncoderModel():
     allNames = ["layer1_filters","layer2_filters","layer3_filters","layer4_filters","layer5_filters","layer6_filters",
                 "layer7_filters","layer8_filters","layer9_filters","layer10_filters"]
     allRelu = [True]*4
-    allBatch = [True]*4
+    allBatch = [False]*4
+
+    # We do not need ReLUs in the encoder layer and the decode layer
+    allRelu[1] = False
+    allRelu[3] = False
+    allBatch[1] = False
+    allBatch[3] = False
     layer_outputs, weights, weight_shapes, encode, decode = cae.build_model(2, allFilters, allStrides, allNames, allRelu, allBatch)
-    
+
     print("Setting up the Training model of the Autoencoder")
     cost, train_op = cae.train()
     return layer_outputs, weights, weight_shapes, encode, decode, cost, train_op
@@ -68,16 +74,18 @@ def main():
         init_op.run()
         tf.train.start_queue_runners() 
 
-        for i in range(1000):
+        for i in range(100):
             print("Running iteration {} of TF Session".format(i))
             _, loss = sess.run([train_op, cost])
             print("The current loss is: " + str(loss))
 
-        # encodeLayer = sess.run(encode)
-        # decodeLayer = sess.run(decode)
-        # print("Shape of encoded matrix: " + str(encodeLayer[16,:,:,:].shape))
-        # mat2visual(encodeLayer[16,:,:,:, 0], [10, 15, 19], 'encodedImage.png')
-        # mat2visual(decodeLayer[16,:,:,:, 0], [15, 25, 35], 'decodedImage.png')
+        encodeLayer = np.asarray(sess.run(encode))
+        decodeLayer = np.asarray(sess.run(decode))
+        print("Shape of encodeLayer: "+ str(encodeLayer))
+        print(type(encodeLayer))
+        print(encodeLayer.shape)
+        mat2visual(encodeLayer[0, 16,:,:,:, 0], [10, 15, 19], 'encodedImage.png')
+        mat2visual(decodeLayer[0, 16,:,:,:, 0], [40, 55, 60], 'decodedImage.png')
 
 
 
