@@ -36,29 +36,34 @@ class Layers(object):
         next_layer = tf.sigmoid(prev_layer)
         return next_layer
 
-    def batch_norm(self, prev_layer, mu_shape, sig_shape, beta_shape,scale_shape, var_eps = 1e-3):
-        mu = self.init_weights(mu_shape)
-        sigma = self.init_weights(sig_shape)
+    def batch_norm(self, prev_layer, axes, beta_shape,scale_shape, var_eps = 1e-6):
+        mu, sigma = tf.nn.moments(prev_layer, axes)
         beta = self.init_weights(beta_shape)
         scale = self.init_weights(scale_shape)
         next_layer = tf.nn.batch_normalization(prev_layer, mu, sigma, beta, scale, var_eps)
         return next_layer
 
-    def fcLayer(self, prev_layer, wshape):
+    def fcLayer(self, prev_layer, wshape, sigmoid=True, batch_norm=False):
         wOut = self.init_weights(wshape)
         b = self.init_weights([wshape[1]])
-        pyx = tf.add(tf.matmul(prev_layer, wOut), b)
-        return pyx, wOut
+        next_layer = tf.add(tf.matmul(prev_layer, wOut), b)
+        if batch_norm:
+            next_layer = self.batch_norm(next_layer,[0],[wshape[1]],[wshape[1]] )
+        if sigmoid:
+            next_layer = self.sigmoid(next_layer)
+
+
+        return next_layer, wOut
 
     def cost_function(self, model_output, Y, op='square'):
         cost = None
         if  op == 'square':
-            cost = tf.reduce_mean(tf.square(model_output - Y))
+            cost = tf.reduce_mean(tf.square(tf.sub(model_output,Y)))
         elif op == 'cross-entropy':
             cost = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(model_output, Y))
         elif op == 'softmax':
             cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(model_output, Y))
-            
+
         return cost
 
     def minimization_function(self, cost, learning_rate, beta1, beta2, opt='Rmsprop'):
@@ -84,7 +89,7 @@ class Layers(object):
         rho_hat = tf.reduce_mean(wgt)
         invrho = tf.sub(tf.constant(1.), rho)
         invrhohat = tf.sub(tf.constant(1.), rho_hat)
-        logrho = tf.add(self.logfunc(rho,rho_hat), self.logfunc(invrho, invrhohat))
+        logrho = tf.add(tf.abs(self.logfunc(rho,rho_hat)), tf.abs(self.logfunc(invrho, invrhohat)))
         return logrho
 
     def logfunc(self, x1, x2):
@@ -125,7 +130,7 @@ class CNNLayers(Layers):
                             strides=layer_stride, padding=padding,name=w_name),b)
 
         if batchNorm:
-            nextLayer = self.batch_norm(nextLayer, [numFilters], [numFilters], [numFilters], [numFilters])
+            nextLayer = self.batch_norm(nextLayer, [0,1,2,3], [numFilters], [numFilters])
 
         if if_relu:
             nextLayer = self.relu(nextLayer)
@@ -152,7 +157,7 @@ class CNNLayers(Layers):
                             strides=layer_stride, padding=padding),b)
 
         if batchNorm:
-            nextLayer = self.batch_norm(nextLayer, [numFilters], [numFilters], [numFilters], [numFilters])
+            nextLayer = self.batch_norm(nextLayer, [0,1,2,3], [numFilters], [numFilters])
 
         if if_relu:
             nextLayer = self.relu(nextLayer)

@@ -5,7 +5,42 @@ from layers import *
 from input_brain import *
 import copy
 
-class ConvAutoEncoder(NeuralNetwork):
+
+class NeuralNetwork(CNNLayers):
+    def __init__(self, input_shape, output_shape, batch_size=1, learning_rate=1e-3, beta1=0.99, beta2=0.99, lmbda = None, op='Rmsprop'):
+        CNNLayers.__init__(self)
+        self.input, self.output, self.p_keep = self.createVariables(input_shape, output_shape, batch_size)
+        self.input_shape = input_shape
+        self.output_shape = output_shape
+        self.batch_size = batch_size
+        self.learning_rate = learning_rate
+        self.beta1 = beta1
+        self.beta2 = beta2
+        self.rho = rho
+        self.lmbda = lmbda
+        self.op = op
+
+    def build_model(self, num_layers, hidden_units, sigmoid ,batch_norm=True):
+        weights = {}
+        layersOut = {}
+
+        prev_layer = self.input
+        prev_shape = (prev_layer.get_shape().as_list())[1]
+        for i in range(num_layers):
+            layersOut['layer'+str(i+1)] ,weights['w'+str(i+1)] = self.fcLayer(prev_layer, [prev_shape, hidden_units[i]], sigmoid, batch_norm)
+            prev_shape = hidden_units[i]
+
+        self.layersOut = layersOut
+        self.weights = weights
+
+        return layersOut, weights
+
+    # def train(self):
+
+
+
+
+class ConvAutoEncoder(CNNLayers):
 
     def __init__(self, input_shape, output_shape, batch_size=1, learning_rate=1e-3, beta1=0.99, beta2=0.99, rho=0.4, lmbda = 0.6, op='Rmsprop'):
         CNNLayers.__init__(self)
@@ -58,13 +93,21 @@ class ConvAutoEncoder(NeuralNetwork):
 
     def train(self):
         cost = self.cost_function(self.decode, self.input, op='square')
-        cumCost = self.add_regularization( cost, self.encode, self.lmbda, self.rho, op='kl')
+
+        cumCost = cost
+        numEntries = len(self.weights)
+
+        weightVals = self.weights.values()
+        for i in range(numEntries):
+            cumCost = self.add_regularization( cumCost, weightVals[i], self.lmbda[i], self.rho[i], op='kl')
+
+        # cumCost = self.add_regularization( cost, self.encode, self.lmbda, self.rho, op='kl')
         train_op = self.minimization_function(cumCost, self.learning_rate, self.beta1, self.beta2, self.op)
         return cumCost, train_op
 
 
 class ConvNN(CNNLayers):
-    def __init__(self, input_shape, output_shape, num_layers, batch_size=1, learning_rate=1e-3, beta1=0.99, beta2=0.99, lmbda = [0]*num_layers, op='Rmsprop'):
+    def __init__(self, input_shape, output_shape, num_layers, batch_size=1, learning_rate=1e-3, beta1=0.99, beta2=0.99, lmbda = None, op='Rmsprop'):
         CNNLayers.__init__(self)
         self.input, self.output, self.p_keep = self.createVariables(input_shape, output_shape, batch_size)
         self.input_shape = input_shape
@@ -116,6 +159,8 @@ class ConvNN(CNNLayers):
         train_op = self.minimization_function(cumCost, self.learning_rate, self.beta1, self.beta2, self.op)
         return cumCost, train_op
 
+# class MultiModalNN(CNNLayers):
+#     def __init__(self):
 
 
 # class ResCNN(CNNLayers):
