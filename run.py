@@ -82,17 +82,20 @@ def main():
         init_op = tf.group(tf.initialize_all_variables(), tf.initialize_local_variables())
 
         init_op.run()
-        tf.train.start_queue_runners()
 
-        # Get checkpoint at step: i_stopped
-        ckpt = tf.train.get_checkpoint_state(FLAGS.checkpoint_dir)
-        if ckpt and ckpt.model_checkpoint_path:
-            saver.restore(sess, ckpt.model_checkpoint_path)
-            print(ckpt.model_checkpoint_path)
-            i_stopped = int(ckpt.model_checkpoint_path.split('/')[-1].split('-')[-1])
-        else:
-            print('No checkpoint file found!')
-            i_stopped = 0
+        coord = tf.train.Coordinator()
+        tf.train.start_queue_runners(coord=coord, sess=sess)
+
+        # # Get checkpoint at step: i_stopped
+        # ckpt = tf.train.get_checkpoint_state(FLAGS.checkpoint_dir)
+        # if ckpt and ckpt.model_checkpoint_path:
+        #     saver.restore(sess, ckpt.model_checkpoint_path)
+        #     print(ckpt.model_checkpoint_path)
+        #     i_stopped = int(ckpt.model_checkpoint_path.split('/')[-1].split('-')[-1])
+        # else:
+        #     print('No checkpoint file found!')
+        #     i_stopped = 0
+        i_stopped = 0
 
         for i in range(i_stopped, FLAGS.max_steps):
             print("Running iteration {} of TF Session".format(i))
@@ -100,7 +103,7 @@ def main():
             print("The current loss is: " + str(loss))
 
             # Checkpoint model at each 10 iterations
-            if i != 0 and i % 10 == 0 or (i+1) == FLAGS.max_steps:
+            if i != 0 and i % 20 == 0 or (i+1) == FLAGS.max_steps:
                 checkpoint_path = os.path.join(FLAGS.checkpoint_dir, 'model.ckpt')
                 saver.save(sess, checkpoint_path, global_step=i)
 
