@@ -24,21 +24,35 @@ tf.app.flags.DEFINE_boolean('train', True,
 
 def createAutoEncoderModel(train, data_list):
 
-    numForwardLayers = 2
-    lmbVec = [0.6]*numForwardLayers*2
-    rhoVec = [0.7]*numForwardLayers*2
+    # hyperparameters
+    filter_sz = [3,3]
+    stride_sz = [1,3]
+    learning_rate = 0.001
+    beta1 = 0.99
+    beta2 = None
+    rho = 0.7
+    lmbda = 0.6
+    op = 'Rmsprop'
+
+    allFilters = []
+    for i in filter_sz:
+        allFilters.append([i,i,i,1,1])
+    allStrides = []
+    for i in stride_sz:
+        allStrides.append([1,i,i,i,1])
+
+    numForwardLayers = len(allFilters)
+    #lmbVec = [0.4]*numForwardLayers*2
+    #rhoVec = [0.1]*numForwardLayers*2
 
     print("Creating the Convolutional AutoEncoder Object")
-    cae = ConvAutoEncoder(train, data_list, [FLAGS.batch_size, 45, 54, 45, 1], [FLAGS.batch_size, 45, 54, 45, 1], FLAGS.batch_size, 0.001, 0.99, None, rho=rhoVec, lmbda = lmbVec, op='Rmsprop')
+    cae = ConvAutoEncoder(train, data_list, [FLAGS.batch_size, 45, 54, 45, 1], [FLAGS.batch_size, 45, 54, 45, 1], 
+                          FLAGS.batch_size, 0.001, 0.99, None, rho=rhoVec, lmbda = lmbVec, op='Rmsprop')
 
-    # allFilters = [[3, 3, 3, 1, 1],[3, 3, 3, 1, 1], [3, 3, 3, 1, 1], [3, 3, 3, 1, 1]]
-    # allStrides = [[1, 1, 1, 1, 1],[1, 1, 1, 1, 1],[1, 2, 2, 2, 1], [1, 1, 1, 1, 1]]
-    allFilters = [[3, 3, 3, 1, 1],[3, 3, 3, 1, 1]]
-    allStrides = [[1, 1, 1, 1, 1],[1, 3, 3, 3, 1]]
     allNames = ["layer1_filters","layer2_filters","layer3_filters","layer4_filters","layer5_filters","layer6_filters",
                 "layer7_filters","layer8_filters","layer9_filters","layer10_filters"]
     allRelu = [True]*numForwardLayers*2
-    allBatch = [True]*numForwardLayers*2
+    allBatch = [False]*numForwardLayers*2
 
     # We do not need ReLUs in the encoder layer and the decode layer
     # DO NOT CHANGE UNLESS NECESSARY
