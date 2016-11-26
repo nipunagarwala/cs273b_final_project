@@ -152,23 +152,28 @@ def mat2visual(mat, zLocs, filename, valRange=(0,1)):
     @param  zLocs       :   Specifies the z positions to slice the mat matrix at
     @type   filename    :   String
     @param  filename    :   Name of the file to save the sliced brains to.
-    @type   valRange    :   int tuple
+    @type   valRange    :   int tuple or 'auto'
     @param  valRange    :   Specifies the maximum and minimum values of the colorbar used in imshow.
+                            'auto' for auto-scaling of the input
     """
 
     _,_,c = mat.shape
+    plt.close("all")
+    plt.figure()
     for i in range(len(zLocs)):
         if zLocs[i]>=c:
             print("An element %d in zLocs is larger than %d" %(zLocs[i],c))
             return
         plt.subplot(1,len(zLocs),i+1)
         plt.title('z='+str(zLocs[i]))
-        plt.imshow(mat[:,:,zLocs[i]], vmin=min(valRange), vmax=max(valRange), cmap = "gray", interpolation='none')
-    
+        if type(valRange) is str and valRange=='auto':
+            plt.imshow(mat[:,:,zLocs[i]], cmap = "gray", interpolation='none')
+        else:
+            plt.imshow(mat[:,:,zLocs[i]], vmin=min(valRange), vmax=max(valRange), cmap = "gray", interpolation='none')
+
     ax = plt.gca()
     divider = make_axes_locatable(ax)
     cax = divider.append_axes("right", size="5%", pad=0.1)
     plt.colorbar(cax=cax)
 
     plt.savefig(filename)
-    
