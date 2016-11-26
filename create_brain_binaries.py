@@ -6,10 +6,14 @@ import csv
 
 BRAIN_DIR = os.path.abspath('/data/originalfALFFData')
 PHENOTYPE_FILE = os.path.abspath('/data/processed_imputed_phenotype_data.csv')
-OUTPUT_DIR = os.path.abspath('/data/binaries')
-ALL_FILES = os.path.abspath('/data/brain_binary_list.json')
-TRAIN_FILE = os.path.abspath('/data/train_brain_binary_list.json')
-TEST_FILE = os.path.abspath('/data/test_brain_binary_list.json')
+# OUTPUT_DIR = os.path.abspath('/data/binaries')
+OUTPUT_DIR = os.path.abspath('/data/binaries_new')
+# ALL_FILES = os.path.abspath('/data/brain_binary_list.json')
+# TRAIN_FILE = os.path.abspath('/data/train_brain_binary_list.json')
+# TEST_FILE = os.path.abspath('/data/test_brain_binary_list.json')
+ALL_FILES = os.path.abspath('/data/all.json')
+TRAIN_FILE = os.path.abspath('/data/train.json')
+TEST_FILE = os.path.abspath('/data/test.json')
 
 
 def _create_feature_binary(X_data, X_image, y_feature, filename):
