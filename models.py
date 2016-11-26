@@ -7,9 +7,9 @@ import copy
 
 
 class NeuralNetwork(CNNLayers):
-    def __init__(self, input_shape, output_shape, batch_size=1, learning_rate=1e-3, beta1=0.99, beta2=0.99, lmbda = None, op='Rmsprop'):
+    def __init__(self, train, data_list, input_shape, output_shape, batch_size=1, learning_rate=1e-3, beta1=0.99, beta2=0.99, lmbda = None, op='Rmsprop'):
         CNNLayers.__init__(self)
-        self.input, self.output, self.p_keep = self.createVariables(input_shape, output_shape, batch_size)
+        self.input, _, self.output, self.p_keep = self.createVariables(train, data_list, batch_size)
         self.input_shape = input_shape
         self.output_shape = output_shape
         self.batch_size = batch_size
@@ -42,9 +42,9 @@ class NeuralNetwork(CNNLayers):
 
 class ConvAutoEncoder(CNNLayers):
 
-    def __init__(self, input_shape, output_shape, batch_size=1, learning_rate=1e-3, beta1=0.99, beta2=0.99, rho=0.4, lmbda = 0.6, op='Rmsprop'):
+    def __init__(self, train, data_list, input_shape, output_shape, batch_size=1, learning_rate=1e-3, beta1=0.99, beta2=0.99, rho=0.4, lmbda = 0.6, op='Rmsprop'):
         CNNLayers.__init__(self)
-        self.input, self.output, self.p_keep = self.createVariables(input_shape, output_shape, batch_size)
+        self.input, _, self.output, self.p_keep = self.createVariables(train, data_list, batch_size)
         self.input_shape = input_shape
         self.output_shape = output_shape
         self.batch_size = batch_size
@@ -74,7 +74,7 @@ class ConvAutoEncoder(CNNLayers):
         self.encode = prev_layer
 
         print("The encoded image size is: " + str(prev_layer.get_shape().as_list()))
-        
+
         tot = 2*num_layers_encode #4 layers
         for i in range(num_layers_encode, tot):
             print(filters[tot-i-1])
@@ -107,9 +107,9 @@ class ConvAutoEncoder(CNNLayers):
 
 
 class ConvNN(CNNLayers):
-    def __init__(self, input_shape, output_shape, num_layers, batch_size=1, learning_rate=1e-3, beta1=0.99, beta2=0.99, lmbda = None, op='Rmsprop'):
+    def __init__(self, train, data_list, input_shape, output_shape, num_layers, batch_size=1, learning_rate=1e-3, beta1=0.99, beta2=0.99, lmbda = None, op='Rmsprop'):
         CNNLayers.__init__(self)
-        self.input, self.output, self.p_keep = self.createVariables(input_shape, output_shape, batch_size)
+        self.input, _, self.output, self.p_keep = self.createVariables(train, data_list, batch_size)
         self.input_shape = input_shape
         self.output_shape = output_shape
         self.batch_size = batch_size
@@ -164,9 +164,9 @@ class ConvNN(CNNLayers):
 
 
 # class ResCNN(CNNLayers):
-#     def __init__(self, input_shape, output_shape, batch_size=1, learning_rate=1e-3, beta1=0.99, beta2=0.99, rho=0.4, lmbda = 0.6, op='Rmsprop'):
+#     def __init__(self, train, data_list, input_shape, output_shape, batch_size=1, learning_rate=1e-3, beta1=0.99, beta2=0.99, rho=0.4, lmbda = 0.6, op='Rmsprop'):
 #         CNNLayers.__init__(self)
-#         self.input, self.output, self.p_keep = self.createVariables(input_shape, output_shape, batch_size)
+#         self.input, _, self.output, self.p_keep = self.createVariables(train, data_list, batch_size)
 #         self.input_shape = input_shape
 #         self.output_shape = output_shape
 #         self.batch_size = batch_size
@@ -179,10 +179,3 @@ class ConvNN(CNNLayers):
 
 
 #     def build_model(self):
-
-
-
-
-
-
-

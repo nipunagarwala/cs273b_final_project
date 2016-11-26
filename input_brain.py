@@ -54,7 +54,7 @@ def read_binary(filename_queue):
 
 def _generate_image_and_label_batch(image, data, label, min_queue_examples, batch_size, shuffle):
 	# Create queue that shuffles examples and reads 'batch_size' images/labels from queue
-	train_preprocess_threads = 1
+	train_preprocess_threads = 16
 	test_preprocess_threads = 1         # TODO: subject to change- explain
 
 	if shuffle:

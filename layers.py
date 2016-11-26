@@ -13,19 +13,18 @@ class Layers(object):
         self.stdDev = 0.35
 
     ''' Initializes the weights based on the std dev set in the constructor
-    
+
     '''
     def init_weights(self, shape):
         return tf.Variable(tf.random_normal(shape, stddev=self.stdDev))
 
-    def createVariables(self, x_shape, y_shape, batch_size):
-        # X = tf.placeholder("float", x_shape)
-        # Y = tf.placeholder("float", y_shape)
+    def createVariables(self, train, data_list, batch_size):
+        # train: Boolean
+        # data_list: Path of a file containing a list of all binary data file paths
+        # batch_size: int
         p_keep_conv = tf.placeholder("float")
-        # return X,Y,p_keep_conv
-
-        X, Y = inputs(True, '/data/train_brain_binary_list.json', batch_size)
-        return X,Y,p_keep_conv
+        X_image, X_data, Y = inputs(train, data_list, batch_size)
+        return X_image, X_data, Y, p_keep_conv
 
 
     def dropout(self, prev_layer,  p_keep):
@@ -117,16 +116,16 @@ class CNNLayers(Layers):
     def conv_layer(self, prev_layer_out, w_shape, layer_stride, w_name, num_dim = '2d', padding='SAME',if_relu = True, batchNorm = True):
         w_conv = tf.Variable(tf.random_normal(w_shape, stddev=self.stdDev),
                           name=w_name)
-        
+
         numFilters = w_shape[len(w_shape)-1]
         b = tf.Variable(tf.random_normal([numFilters], stddev=self.stdDev))
 
         nextLayer = None
         if num_dim == '3d':
-            nextLayer = tf.add(tf.nn.conv3d(prev_layer_out, w_conv, 
+            nextLayer = tf.add(tf.nn.conv3d(prev_layer_out, w_conv,
                             strides=layer_stride, padding=padding,name=w_name),b)
         else:
-            nextLayer = tf.add(tf.nn.conv2d(prev_layer_out, w_conv, 
+            nextLayer = tf.add(tf.nn.conv2d(prev_layer_out, w_conv,
                             strides=layer_stride, padding=padding,name=w_name),b)
 
         if batchNorm:
@@ -135,7 +134,7 @@ class CNNLayers(Layers):
         if if_relu:
             nextLayer = self.relu(nextLayer)
 
-        
+
         return nextLayer, w_conv
 
 
@@ -150,10 +149,10 @@ class CNNLayers(Layers):
         nextLayer = None
 
         if num_dim == '3d':
-            nextLayer = tf.add(tf.nn.conv3d_transpose(prev_layer_out, w_deconv, out_shape, 
+            nextLayer = tf.add(tf.nn.conv3d_transpose(prev_layer_out, w_deconv, out_shape,
                             strides=layer_stride, padding=padding),b)
         else:
-            nextLayer = tf.add(tf.nn.conv2d_transpose(prev_layer_out, w_deconv, out_shape, 
+            nextLayer = tf.add(tf.nn.conv2d_transpose(prev_layer_out, w_deconv, out_shape,
                             strides=layer_stride, padding=padding),b)
 
         if batchNorm:
@@ -162,9 +161,9 @@ class CNNLayers(Layers):
         if if_relu:
             nextLayer = self.relu(nextLayer)
 
-        
+
         return nextLayer, w_deconv
-        
+
     def pool(self, prev_layer, window_size, str_size, poolType = 'max'):
         next_layer = None
         if poolType == 'max':
@@ -187,7 +186,3 @@ class CNNLayers(Layers):
     def residual_unit(self, input_layer, output_layer):
         res = input_layer + output_layer
         return res
-
-
-
-

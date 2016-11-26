@@ -12,23 +12,29 @@ tf.app.flags.DEFINE_string('train_dir', '/data/train',
                            """Directory where to write event logs """)
 tf.app.flags.DEFINE_string('checkpoint_dir', '/data/ckpt',
                            """Directory where to write checkpoints """)
-tf.app.flags.DEFINE_integer('max_steps', 10,
+tf.app.flags.DEFINE_integer('max_steps', 1000,
                             """Number of batches to run.""")
 tf.app.flags.DEFINE_integer('batch_size', 32,
                             """Batch size being fed in.""")
+tf.app.flags.DEFINE_string('train_binaries', '/data/train.json',
+                           """File containing list of binary filenames used for training """)
+tf.app.flags.DEFINE_boolean('train', True,
+                           """Boolean describing training mode """)
 
 
-def createAutoEncoderModel():
+def createAutoEncoderModel(train, data_list):
 
-    numForwardLayers = 4
-    lmbVec = [0.4]*numForwardLayers*2
-    rhoVec = [0.1]*numForwardLayers*2
+    numForwardLayers = 2
+    lmbVec = [0.6]*numForwardLayers*2
+    rhoVec = [0.7]*numForwardLayers*2
 
     print("Creating the Convolutional AutoEncoder Object")
-    cae = ConvAutoEncoder([FLAGS.batch_size, 45, 54, 45, 1], [FLAGS.batch_size, 45, 54, 45, 1], FLAGS.batch_size, 0.001, 0.99, None, rho=rhoVec, lmbda = lmbVec, op='Rmsprop')
+    cae = ConvAutoEncoder(train, data_list, [FLAGS.batch_size, 45, 54, 45, 1], [FLAGS.batch_size, 45, 54, 45, 1], FLAGS.batch_size, 0.001, 0.99, None, rho=rhoVec, lmbda = lmbVec, op='Rmsprop')
 
-    allFilters = [[3, 3, 3, 1, 1],[3, 3, 3, 1, 1], [3, 3, 3, 1, 1], [3, 3, 3, 1, 1]]
-    allStrides = [[1, 1, 1, 1, 1],[1, 1, 1, 1, 1],[1, 2, 2, 2, 1], [1, 1, 1, 1, 1]]
+    # allFilters = [[3, 3, 3, 1, 1],[3, 3, 3, 1, 1], [3, 3, 3, 1, 1], [3, 3, 3, 1, 1]]
+    # allStrides = [[1, 1, 1, 1, 1],[1, 1, 1, 1, 1],[1, 2, 2, 2, 1], [1, 1, 1, 1, 1]]
+    allFilters = [[3, 3, 3, 1, 1],[3, 3, 3, 1, 1]]
+    allStrides = [[1, 1, 1, 1, 1],[1, 3, 3, 3, 1]]
     allNames = ["layer1_filters","layer2_filters","layer3_filters","layer4_filters","layer5_filters","layer6_filters",
                 "layer7_filters","layer8_filters","layer9_filters","layer10_filters"]
     allRelu = [True]*numForwardLayers*2
@@ -52,12 +58,12 @@ def createAutoEncoderModel():
 
 
 
-def createCNNModel():
+def createCNNModel(train, data_list):
 
     numLayers = 7
     regConstants = [0.6]*numLayers
     print("Creating the Convolutional Neural Network Object")
-    deepCnn = ConvNN([FLAGS.batch_size, 45, 54, 45, 1], [FLAGS.batch_size, 45, 54, 45, 1], numLayers , FLAGS.batch_size, 0.001, 0.99, None, lmbda = regConstants, op='Rmsprop')
+    deepCnn = ConvNN(train, data_list, [FLAGS.batch_size, 45, 54, 45, 1], [FLAGS.batch_size, 45, 54, 45, 1], numLayers , FLAGS.batch_size, 0.001, 0.99, None, lmbda = regConstants, op='Rmsprop')
 
     print("Building the Deep CNN Model")
     layersOut, weights = deepCnn.build_model()
@@ -74,7 +80,7 @@ def createCNNModel():
 
 
 def main():
-    layer_outputs, weights, weight_shapes, encode, decode, cost, train_op = createAutoEncoderModel()
+    layer_outputs, weights, weight_shapes, encode, decode, cost, train_op = createAutoEncoderModel(True, FLAGS.train_binaries)
 
     # layer_outputs, weights, cost, train_op = createCNNModel()
 
