@@ -16,11 +16,10 @@ class NeuralNetwork(CNNLayers):
         self.learning_rate = learning_rate
         self.beta1 = beta1
         self.beta2 = beta2
-        self.rho = rho
         self.lmbda = lmbda
         self.op = op
 
-    def build_model(self, num_layers, hidden_units, sigmoid ,batch_norm=True):
+    def build_model(self, num_layers, hidden_units, sigmoid=True,batch_norm=True):
         weights = {}
         layersOut = {}
 
@@ -29,14 +28,29 @@ class NeuralNetwork(CNNLayers):
         for i in range(num_layers):
             layersOut['layer'+str(i+1)] ,weights['w'+str(i+1)] = self.fcLayer(prev_layer, [prev_shape, hidden_units[i]], sigmoid, batch_norm)
             prev_shape = hidden_units[i]
+            prev_layer = layersOut['layer'+str(i+1)]
+
+        if not sigmoid:
+            prev_layer = self.sigmoid(prev_layer)
+
+        layersOut['pred'] = prev_layer
 
         self.layersOut = layersOut
         self.weights = weights
 
         return layersOut, weights
 
-    # def train(self):
+    def train(self):
+        cost = self.cost_function(self.layersOut['pred'], self.output, op='square')
+        cumCost = cost
+        numEntries = len(self.weights)
 
+        weightVals = self.weights.values()
+        for i in range(numEntries):
+            cumCost = self.add_regularization( cumCost, weightVals[i], self.lmbda[i], None, op='l2')
+
+        train_op = self.minimization_function(cumCost, self.learning_rate, self.beta1, self.beta2, self.op)
+        return cumCost, train_op
 
 
 
@@ -51,7 +65,6 @@ class ConvAutoEncoder(CNNLayers):
         self.learning_rate = learning_rate
         self.beta1 = beta1
         self.beta2 = beta2
-        self.rho = rho
         self.lmbda = lmbda
         self.op = op
 
@@ -116,32 +129,31 @@ class ConvNN(CNNLayers):
         self.learning_rate = learning_rate
         self.beta1 = beta1
         self.beta2 = beta2
-        self.rho = rho
         self.lmbda = lmbda
         self.op = op
 
-    def build_model(self):
+    def build_model(self, sigmoid, batch_norm):
         weights = {}
         layersOut = {}
 
-        layersOut['layer1'], weights['w1'] = self.conv_layer( X, [3, 3, 3, 1, 1], [1, 1, 1, 1, 1], 'layer1_filters', '3d', True, True)
-        layersOut['layer2'], weights['w2'] = self.conv_layer(layersOut['layer1'], [3, 3, 3, 1, 1], [1, 1, 1, 1, 1], 'layer2_filters', '3d', True, True)
+        layersOut['layer1'], weights['w1'] = self.conv_layer( self.input, [3, 3, 3, 1, 1], [1, 1, 1, 1, 1], 'layer1_filters', '3d','SAME', True, True)
+        layersOut['layer2'], weights['w2'] = self.conv_layer(layersOut['layer1'], [3, 3, 3, 1, 1], [1, 1, 1, 1, 1], 'layer2_filters', '3d', 'SAME',True, True)
 
-        layersOut['layer2-pool'] = self.pool(layersOut['layer2'],[1, 3, 3, 3, 1],[1, 1, 1, 1, 1] , 'max')
+        layersOut['layer2-pool'] = self.pool(layersOut['layer2'],[1, 5, 5, 5, 1],[1, 2, 2, 2, 1] , 'max')
 
-        layersOut['layer3'], weights['w3']=  self.conv_layer( layersOut['layer2-pool'], [3, 3, 3, 1, 1], [1, 1, 1, 1, 1], 'layer3_filters', '3d', True, True)
-        layersOut['layer4'], weights['w4']=  self.conv_layer( layersOut['layer3'], [3, 3, 3, 1, 1], [1, 1, 1, 1, 1], 'layer4_filters', '3d', True, True)
+        layersOut['layer3'], weights['w3']=  self.conv_layer( layersOut['layer2-pool'], [3, 3, 3, 1, 1], [1, 1, 1, 1, 1], 'layer3_filters', '3d','SAME', True, True)
+        layersOut['layer4'], weights['w4']=  self.conv_layer( layersOut['layer3'], [3, 3, 3, 1, 1], [1, 1, 1, 1, 1], 'layer4_filters', '3d', 'SAME',True, True)
 
         layersOut['layer4-pool'] = self.pool(layersOut['layer4'],[1, 5, 5, 5, 1],[1, 2, 2, 2, 1] , 'max')
 
-        layersOut['layer5'], weights['w5'] =  self.conv_layer( layersOut['layer4-pool'], [3, 3, 3, 1, 1], [1, 1, 1, 1, 1], 'layer5_filters', '3d', True, True)
+        layersOut['layer5'], weights['w5'] =  self.conv_layer( layersOut['layer4-pool'], [3, 3, 3, 1, 1], [1, 1, 1, 1, 1], 'layer5_filters', '3d','SAME', True, True)
 
-        fcShapeConv = weights['w5'].get_shape().as_list()
+        fcShapeConv = layersOut['layer5'].get_shape().as_list()
         numParams = reduce(lambda x, y: x*y, fcShapeConv)
         layersOut['layer5-fc'] = tf.reshape(layersOut['layer5'], [1, numParams])
-        layersOut['layer6'], weights['w6'] = self.fcLayer(layersOut['layer5-fc'], [ numParams, numParams])
-        layersOut['pred'], weights['w7'] = self.fcLayer(layersOut['layer6'], [ numParams, self.batch_size])
-        layersOut['pred-prob'] = self.sigmoid(layersOut['pred'])
+        layersOut['layer6'], weights['w6'] = self.fcLayer(layersOut['layer5-fc'], [ numParams, numParams], sigmoid, batch_norm)
+        layersOut['pred'], weights['w7'] = self.fcLayer(layersOut['layer6'], [ numParams, self.batch_size], sigmoid, batch_norm)
+        layersOut['cnn_out'] = layersOut['layer5-fc']
 
 
         self.layersOut = layersOut
@@ -150,17 +162,74 @@ class ConvNN(CNNLayers):
         return layersOut, weights
 
     def train(self):
-        cost = self.cost_function( self.layersOut['pred-prob'], self.output, op='square')
+        cost = self.cost_function( self.layersOut['pred'], self.output, op='square')
         cumCost = cost
         numEntries = len(self.weights)
+
+        weightVals = self.weights.values()
         for i in range(numEntries):
-            cumCost = self.add_regularization( cumCost, self.weights[i], self.lmbda[i], None, op='l2')
+            cumCost = self.add_regularization( cumCost, weightVals[i], self.lmbda[i], None, op='l2')
 
         train_op = self.minimization_function(cumCost, self.learning_rate, self.beta1, self.beta2, self.op)
         return cumCost, train_op
 
-# class MultiModalNN(CNNLayers):
-#     def __init__(self):
+class MultiModalNN(CNNLayers):
+    def __init__(self, cnn_out, fcnet_out, cnn_shape, fcnet_shape, output_shape, lmbda, batch_size=1, learning_rate=1e-3, beta1=0.99, beta2=0.99, op='Rmsprop' ):
+        CNNLayers.__init__(self)
+
+        self.cnn_out = cnn_out
+        self.fcnet_out = fcnet_out
+        self.cnn_shape = cnn_shape
+        self.fcnet_shape = fcnet_shape
+        self.output_shape = output_shape
+        self.lmbda = lmbda
+        self.batch_size = batch_size
+        self.learning_rate = learning_rate
+        self.beta1 = beta1
+        self.beta2 = beta2
+        self.op = op
+
+    def build_model(self, num_layers, hidden_units, sigmoid=True, batch_norm=True):
+        newInShape = [self.cnn_shape[0], self.cnn_shape[1]+self.fcnet_shape[1]]
+
+        prev_shape = newInShape[1]
+        concatIn = tf.concat(1, [self.cnn_out, self.fcnet_out])
+
+        weights = {}
+        layersOut = {}
+
+        prev_layer = concatIn
+
+        for i in range(num_layers):
+            layersOut['layer'+str(i+1)] ,weights['w'+str(i+1)] = self.fcLayer(prev_layer, [prev_shape, hidden_units[i]], sigmoid, batch_norm)
+            prev_shape = hidden_units[i]
+            prev_layer = layersOut['layer'+str(i+1)]
+
+        layersOut['pred'] = prev_layer
+
+        self.layersOut = layersOut
+        self.weights = weights
+
+        return layersOut, weights
+
+    def train(self):
+        cost = self.cost_function(self.layersOut['pred'], self.output, op='square')
+        cumCost = cost
+        numEntries = len(self.weights)
+
+        weightVals = self.weights.values()
+        for i in range(numEntries):
+            cumCost = self.add_regularization( cumCost, weightVals[i], self.lmbda[i], None, op='l2')
+
+        train_op = self.minimization_function(cumCost, self.learning_rate, self.beta1, self.beta2, self.op)
+        return cumCost, train_op
+
+
+
+
+
+
+
 
 
 # class ResCNN(CNNLayers):

@@ -80,7 +80,7 @@ class Layers(object):
     def add_regularization(self, loss, wgt, lmbda, rho, op='kl'):
         nextLoss = None
         if op == 'l2':
-            nextLoss = tf.add(loss, tf.mul(lmbda,tf.nn.l2_loss(wgt)))
+            nextLoss = tf.add(loss, tf.reduce_mean(tf.mul(lmbda,tf.nn.l2_loss(wgt))))
         elif op == 'kl':
             nextLoss = tf.add(loss, tf.mul(lmbda, self.kl_sparse_regularization(wgt, lmbda, rho)))
         return nextLoss

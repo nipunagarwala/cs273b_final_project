@@ -14,7 +14,7 @@ tf.app.flags.DEFINE_string('checkpoint_dir', '/data/ckpt',
                            """Directory where to write checkpoints """)
 tf.app.flags.DEFINE_integer('max_steps', 10,
                             """Number of batches to run.""")
-tf.app.flags.DEFINE_integer('batch_size', 32,
+tf.app.flags.DEFINE_integer('batch_size', 1,
                             """Batch size being fed in.""")
 
 
@@ -60,7 +60,7 @@ def createCNNModel():
     deepCnn = ConvNN([FLAGS.batch_size, 45, 54, 45, 1], [FLAGS.batch_size, 45, 54, 45, 1], numLayers , FLAGS.batch_size, 0.001, 0.99, None, lmbda = regConstants, op='Rmsprop')
 
     print("Building the Deep CNN Model")
-    layersOut, weights = deepCnn.build_model()
+    layersOut, weights = deepCnn.build_model(True, False)
 
     print("Setting up the Training model of the Deep CNN")
     cost, train_op = deepCnn.train()
@@ -74,11 +74,10 @@ def createCNNModel():
 
 
 def main():
-    layer_outputs, weights, weight_shapes, encode, decode, cost, train_op = createAutoEncoderModel()
+    # layer_outputs, weights, weight_shapes, encode, decode, cost, train_op = createAutoEncoderModel()
 
-    # layer_outputs, weights, cost, train_op = createCNNModel()
+    layer_outputs, weights, cost, train_op = createCNNModel()
 
-    # X, Y, encode, decode, cost, train_op = createModel()
     print("Created the entire model! YAY!")
 
     # Create a saver
