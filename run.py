@@ -12,7 +12,7 @@ tf.app.flags.DEFINE_string('train_dir', '/data/train',
                            """Directory where to write event logs """)
 tf.app.flags.DEFINE_string('checkpoint_dir', '/data/ckpt',
                            """Directory where to write checkpoints """)
-tf.app.flags.DEFINE_integer('max_steps', 1000,
+tf.app.flags.DEFINE_integer('max_steps', 100,
                             """Number of batches to run.""")
 tf.app.flags.DEFINE_integer('batch_size', 32,
                             """Batch size being fed in.""")
@@ -33,6 +33,7 @@ def createAutoEncoderModel(train, data_list):
     rho = 0.7
     lmbda = 0.6
     op = 'Rmsprop'
+    batchOn = True
 
     allFilters = []
     for i in filter_sz:
@@ -47,12 +48,12 @@ def createAutoEncoderModel(train, data_list):
 
     print("Creating the Convolutional AutoEncoder Object")
     cae = ConvAutoEncoder(train, data_list, [FLAGS.batch_size, 45, 54, 45, 1], [FLAGS.batch_size, 45, 54, 45, 1], 
-                          FLAGS.batch_size, 0.001, 0.99, None, rho=rhoVec, lmbda = lmbVec, op='Rmsprop')
-
+                          FLAGS.batch_size, learning_rate, beta1, beta2, rho=rho, lmbda=lmbda, op=op)
+    
     allNames = ["layer1_filters","layer2_filters","layer3_filters","layer4_filters","layer5_filters","layer6_filters",
                 "layer7_filters","layer8_filters","layer9_filters","layer10_filters"]
     allRelu = [True]*numForwardLayers*2
-    allBatch = [False]*numForwardLayers*2
+    allBatch = [batchOn]*numForwardLayers*2
 
     # We do not need ReLUs in the encoder layer and the decode layer
     # DO NOT CHANGE UNLESS NECESSARY

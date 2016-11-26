@@ -98,10 +98,10 @@ class ConvAutoEncoder(CNNLayers):
         numEntries = len(self.weights)
 
         weightVals = self.weights.values()
-        for i in range(numEntries):
-            cumCost = self.add_regularization( cumCost, weightVals[i], self.lmbda[i], self.rho[i], op='kl')
+        #for i in range(numEntries):
+        #    cumCost = self.add_regularization( cumCost, weightVals[i], self.lmbda[i], self.rho[i], op='kl')
 
-        # cumCost = self.add_regularization( cost, self.encode, self.lmbda, self.rho, op='kl')
+        cumCost = self.add_regularization( cost, self.encode, self.lmbda, self.rho, op='kl')
         train_op = self.minimization_function(cumCost, self.learning_rate, self.beta1, self.beta2, self.op)
         return cumCost, train_op
 
