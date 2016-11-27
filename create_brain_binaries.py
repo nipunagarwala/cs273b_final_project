@@ -38,6 +38,13 @@ def _normalize_brain(brain_data):
     return (brain_data - mean)/brain_data.std()
 
 
+def create_compressed_binary(phenotype, image, label, output_dir, id, prefix='compressed_'):
+    bin_filename = prefix + id + '.bin'
+    bin_path = os.path.join(output_dir, bin_filename)
+    _create_feature_binary(phenotype, image, label, bin_path)
+    return bin_path
+
+
 def convert_brain_npy(brain_dir=BRAIN_DIR, phenotype_file=PHENOTYPE_FILE, output_dir=OUTPUT_DIR, prefix='original_'):
     path_list = []
     with open(phenotype_file, 'r') as csvfile:
@@ -75,7 +82,7 @@ def convert_brain_npy(brain_dir=BRAIN_DIR, phenotype_file=PHENOTYPE_FILE, output
     return path_list
 
 
-def split_brain_binaries(file_list, split_fraction=0.9, train_file=TRAIN_FILE, test_file=TEST_FILE):
+def split_brain_binaries(file_list, train_file, test_file, split_fraction=0.9):
 	# Error handling
 	if split_fraction >= 1.0 or split_fraction <= 0.0:
 		split_fration = 0.9
@@ -93,18 +100,22 @@ def split_brain_binaries(file_list, split_fraction=0.9, train_file=TRAIN_FILE, t
 	train_files = file_list[:num_train]
 	test_files = file_list[num_train:]
 
-	with open(TRAIN_FILE, 'w') as outfile1:
+	with open(train_file, 'w') as outfile1:
 		json.dump(train_files, outfile1)
 
-	with open(TEST_FILE, 'w') as outfile2:
+	with open(test_file, 'w') as outfile2:
 		json.dump(test_files, outfile2)
+
+
+def save_and_split(file_list, all_files=ALL_FILES, train_file=TRAIN_FILE, test_file=TEST_FILE):
+    with open(all_files, 'w') as outfile:
+        json.dump(file_list, outfile)
+	split_brain_binaries(file_list, train_file, test_file)
 
 
 def main():
     file_list = convert_brain_npy()
-    with open(ALL_FILES, 'w') as outfile:
-        json.dump(file_list, outfile)
-	split_brain_binaries(file_list)
+    save_and_split(file_list)
 
 if __name__ == '__main__':
 	main()
