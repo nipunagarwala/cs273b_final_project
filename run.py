@@ -14,7 +14,7 @@ tf.app.flags.DEFINE_string('checkpoint_dir', '/home/nipuna1/cs273b_final_project
                            """Directory where to write checkpoints """)
 tf.app.flags.DEFINE_integer('max_steps', 100,
                             """Number of batches to run.""")
-tf.app.flags.DEFINE_integer('batch_size', 32,
+tf.app.flags.DEFINE_integer('batch_size', 1,
                             """Batch size being fed in.""")
 tf.app.flags.DEFINE_string('train_binaries', '/data/train.json',
                            """File containing list of binary filenames used for training """)
@@ -65,13 +65,14 @@ def createAutoEncoderModel(train, data_list):
     print("Building the Convolutional Autoencoder Model")
     layer_outputs, weights, weight_shapes, encode, decode = cae.build_model(numForwardLayers, allFilters, allStrides, allNames, allRelu, allBatch)
 
+
     print("Setting up the Training model of the Autoencoder")
     cost, train_op = cae.train()
     return layer_outputs, weights, weight_shapes, encode, decode, cost, train_op
 
 
 
-def createCNNModel(train, data_list):
+def createCNNModel(train, data_list, no_train):
 
     numLayers = 8
     regConstants = [0.6]*numLayers
@@ -81,13 +82,16 @@ def createCNNModel(train, data_list):
     print("Building the Deep CNN Model")
     layersOut, weights = deepCnn.build_model(True, False)
 
+    if no_train:
+        return layersOut, weights
+
     print("Setting up the Training model of the Deep CNN")
     cost, train_op = deepCnn.train()
 
     return layersOut, weights, cost, train_op
 
 
-def createVanillaNN(train, data_list):
+def createVanillaNN(train, data_list, no_train):
 
     learning_rate = 0.001
     beta1 = 0.99
@@ -108,12 +112,44 @@ def createVanillaNN(train, data_list):
     print("Building the Deep CNN Model")
     layersOut, weights = deepCnn.build_model(numLayers, hidden_units, True, False)
 
+    if no_train:
+        return layersOut, weights
+
     print("Setting up the Training model of the Deep CNN")
     cost, train_op = deepCnn.train()
 
     return layersOut, weights, cost, train_op
 
 
+def createMultiModalNN(train, data_list):
+
+    layersCnn, weightsCnn = createCNNModel(True, FLAGS.train_binaries, True)
+    layersFc, weightsFc = createVanillaNN(True, FLAGS.train_binaries, True)
+
+    learning_rate = 0.001
+    beta1 = 0.99
+    beta2 = None
+    rho = 0.7
+    op = 'Rmsprop'
+    batchOn = False
+
+    numLayers = 4
+    regConstants = [0.6]*numLayers
+    hidden_units = [32, 64, 32, 1]
+    
+    print("Creating the Multi Modal Convolutional Neural Network Object")
+
+    deepMultiNN = MultiModalNN(train, data_list,layersCnn['layer6-fc'],layersFc['layer3'], layersCnn['output'], FLAGS.batch_size, 
+                learning_rate, beta1, beta2, lmbda = regConstants, op='Rmsprop')
+    
+
+    print("Building the Multi Modal NN Model")
+    layersOut, weights = deepMultiNN.build_model(numLayers, hidden_units, True, False)
+
+    print("Setting up the Training model of the Multi Modal NN Model")
+    cost, train_op = deepMultiNN.train()
+
+    return layersOut, weights, cost, train_op
 
 
 
@@ -121,9 +157,11 @@ def createVanillaNN(train, data_list):
 def main():
     # layer_outputs, weights, weight_shapes, encode, decode, cost, train_op = createAutoEncoderModel(True, FLAGS.train_binaries)
 
-    # layer_outputs, weights, cost, train_op = createCNNModel(True, FLAGS.train_binaries)
+    # layer_outputs, weights, cost, train_op = createCNNModel(True, FLAGS.train_binaries, True)
 
-    layer_outputs, weights, cost, train_op = createVanillaNN(True, FLAGS.train_binaries)
+    # layer_outputs, weights, cost, train_op = createVanillaNN(True, FLAGS.train_binaries, True)
+
+    layer_outputs, weights, cost, train_op = createMultiModalNN(True, FLAGS.train_binaries)
 
     # X, Y, encode, decode, cost, train_op = createModel()
     print("Created the entire model! YAY!")

@@ -25,6 +25,8 @@ class NeuralNetwork(CNNLayers):
         weights = {}
         layersOut = {}
 
+        layersOut['input'] = self.input
+        layersOut['output'] = self.output
         prev_layer = self.input
         prev_shape = (prev_layer.get_shape().as_list())[1]
         for i in range(num_layers):
@@ -78,6 +80,8 @@ class ConvAutoEncoder(CNNLayers):
         encode = []
         decode = []
 
+        layersOut['input'] = self.input
+        layersOut['output'] = self.output
         prev_layer = self.input
         layer_shapes['w0'] =  self.input.get_shape().as_list()
         for i in range(num_layers_encode):
@@ -140,6 +144,9 @@ class ConvNN(CNNLayers):
         weights = {}
         layersOut = {}
 
+        layersOut['input'] = self.input
+        layersOut['output'] = self.output
+
         layersOut['layer1'], weights['w1'] = self.conv_layer( self.input, [3, 3, 3, 1, 1], [1, 1, 1, 1, 1], 'layer1_filters', '3d','SAME', True, True)
         layersOut['layer2'], weights['w2'] = self.conv_layer(layersOut['layer1'], [3, 3, 3, 1, 1], [1, 1, 1, 1, 1], 'layer2_filters', '3d', 'SAME',True, True)
 
@@ -181,14 +188,12 @@ class ConvNN(CNNLayers):
         return cumCost, train_op
 
 class MultiModalNN(CNNLayers):
-    def __init__(self, cnn_out, fcnet_out, cnn_shape, fcnet_shape, output_shape, lmbda, batch_size=1, learning_rate=1e-3, beta1=0.99, beta2=0.99, op='Rmsprop' ):
+    def __init__(self, train, data_list,cnn_out, fcnet_out, output, batch_size=1,  learning_rate=1e-3, beta1=0.99, beta2=0.99, lmbda = None,op='Rmsprop' ):
         CNNLayers.__init__(self)
 
         self.cnn_out = cnn_out
         self.fcnet_out = fcnet_out
-        self.cnn_shape = cnn_shape
-        self.fcnet_shape = fcnet_shape
-        self.output_shape = output_shape
+        self.output = output
         self.lmbda = lmbda
         self.batch_size = batch_size
         self.learning_rate = learning_rate
@@ -197,7 +202,11 @@ class MultiModalNN(CNNLayers):
         self.op = op
 
     def build_model(self, num_layers, hidden_units, sigmoid=True, batch_norm=True):
-        newInShape = [self.cnn_shape[0], self.cnn_shape[1]+self.fcnet_shape[1]]
+
+        cnn_shape = self.cnn_out.get_shape().as_list()
+        fcnet_shape = self.fcnet_out.get_shape().as_list()
+
+        newInShape = [cnn_shape[0], cnn_shape[1]+ fcnet_shape[1]]
 
         prev_shape = newInShape[1]
         concatIn = tf.concat(1, [self.cnn_out, self.fcnet_out])
@@ -220,7 +229,7 @@ class MultiModalNN(CNNLayers):
         return layersOut, weights
 
     def train(self):
-        cost = self.cost_function(self.layersOut['pred'], self.output, op='square')
+        cost = self.cost_function(self.layersOut['pred'], self.output, op='softmax')
         cumCost = cost
         numEntries = len(self.weights)
 
