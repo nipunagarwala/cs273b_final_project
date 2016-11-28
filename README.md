@@ -58,6 +58,9 @@ python run.py --test --model mmnn
 | 2 | 1,3 | 3,3 | 0.001 | 0.99 | N/A | 0.7 | 0.6 | Rmsprop | Yes|
 
 ### Results
+#### Input Image
 ![inputImage](images/inputImage.png?raw=true "Input Image")
+#### Decoded Image
 ![decodedImage](images/decodedImage.png?raw=true "Decoded Image")
+#### Encoded Image
 ![encodedImage](images/encodedImage.png?raw=true "Encoded Image")
