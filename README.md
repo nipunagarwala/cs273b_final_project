@@ -59,8 +59,17 @@ python run.py --test --model mmnn
 
 ### Results
 #### Input Image
+----------------
+```
 ![inputImage](images/inputImage.png?raw=true "Input Image")
+```
 #### Decoded Image
+------------------
+```
 ![decodedImage](images/decodedImage.png?raw=true "Decoded Image")
+```
 #### Encoded Image
+------------------
+```
 ![encodedImage](images/encodedImage.png?raw=true "Encoded Image")
+```
