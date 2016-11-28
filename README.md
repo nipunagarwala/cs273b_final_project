@@ -1,5 +1,7 @@
 # CS 273B Final Project
 
+**Note:** Run `nvidia-smi` before running any scripts related to Neural Net, to make sure that no one else is using the compute!
+
 ## Running Models
 All the models are run from `run.py`. All the hyper-parameters are initialized in the respective model functions. We have `argparse` functionality to run each of the individual models. There are three running modes `--train`, `--test`, and full pass which is defined by the lack of train/test flag. Furthermore, we can run four different models using the `--model` flag. The model names are: `cae`, `cnn`, `nn`, and `mmnn` for the Convolutional Autoencoder, Convolutional Neural Network, Neural Network (phenotype), and MultiModal Neural Network (CNN + NN), respectively.
 
@@ -45,9 +47,17 @@ python run.py --test --model mmnn
 
 **Note:** If no `--model` is supplied, it defaults to `mmnn`
 
-## Convolutional Autoencoder Configurations
+## Convolutional Autoencoder
+
+### Configurations
 
 | \# of Layers  | Stride Sizes | Filter Sizes | Learning Rate alpha | beta 1 | beta 2 | Layer Activation Ratio rho | Activation Term Mixing Term lambda | Optimizer | Batch Norm |
 |:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
 | 2 | 1,1 | 3,3 | 0.001 | 0.99 | N/A | 0.5 | 0.6 | Rmsprop | No |
 | 2 | 1,3 | 3,3 | 0.001 | 0.99 | N/A | 0.7 | 0.6 | Rmsprop | No |
+| 2 | 1,3 | 3,3 | 0.001 | 0.99 | N/A | 0.7 | 0.6 | Rmsprop | Yes|
+
+### Results
+![inputImage](images/inputImage.png?raw=true "Input Image")
+![decodedImage](images/decodedImage.png?raw=true "Decoded Image")
+![encodedImage](images/encodedImage.png?raw=true "Encoded Image")
