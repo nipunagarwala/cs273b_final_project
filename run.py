@@ -197,8 +197,8 @@ def run_model(train, model, binary_filelist, run_all, batch_size, max_steps):
                 loss = sess.run(cost)
             print("The current loss is: " + str(loss))
 
-            # Checkpoint model at each 20 iterations
-            should_save = i != 0 and i % 2 == 0 or (i+1) == max_steps
+            # Checkpoint model at each 100 iterations
+            should_save = i != 0 and i % 100 == 0 or (i+1) == max_steps
             if should_save and train:
                 checkpoint_path = os.path.join(FLAGS.checkpoint_dir, 'model.ckpt')
                 saver.save(sess, checkpoint_path, global_step=i)
