@@ -14,11 +14,11 @@ CAE_LAMBDA = 0.6
 # apply batch norm or not
 CAE_BATCH_NORM = True
 
-# options for the optimizers: 'Rmsprop' 'Adam' 'Adadelta'
+# options for the optimizers: 'Rmsprop' 'adam' 'adagrad'
 CAE_OP = 'Rmsprop'
 # decay rates for the optimizers
 CAE_BETA_1 = 0.99
-# decay rate used by 'Adam'
+# decay rate used by 'adam'
 CAE_BETA_2 = None
 
 
@@ -35,11 +35,11 @@ MMNN_BATCH_NORM = True
 MMNN_HIDDEN_UNITS = [32, 64, 32, 1]
 MMNN_REG_CONSTANTS = [0.6] * len(MMNN_HIDDEN_UNITS)
 
-# options for the optimizers: 'Rmsprop' 'Adam' 'Adadelta'
+# options for the optimizers: 'Rmsprop' 'adam' 'adagrad'
 MMNN_OP = 'Rmsprop'
 # decay rates for the optimizers
 MMNN_BETA_1 = 0.99
-# decay rate used by 'Adam'
+# decay rate used by 'adam'
 MMNN_BETA_2 = None
 
 
@@ -52,11 +52,11 @@ CNN_LEARNING_RATE = 0.001
 # apply batch norm or not
 CNN_BATCH_NORM = True
 
-# options for the optimizers: 'Rmsprop' 'Adam' 'Adadelta'
+# options for the optimizers: 'Rmsprop' 'adam' 'adagrad'
 CNN_OP = 'Rmsprop'
 # decay rates for the optimizers
 CNN_BETA_1 = 0.99
-# decay rate used by 'Adam'
+# decay rate used by 'adam'
 CNN_BETA_2 = None
 
 
@@ -68,9 +68,9 @@ NN_LEARNING_RATE = 0.01
 # apply batch norm or not
 NN_BATCH_NORM = True
 
-# options for the optimizers: 'Rmsprop' 'Adam' 'Adadelta'
+# options for the optimizers: 'Rmsprop' 'adam' 'adagrad'
 NN_OP = 'Rmsprop'
 # decay rates for the optimizers
 NN_BETA_1 = 0.99
-# decay rate used by 'Adam'
+# decay rate used by 'adam'
 NN_BETA_2 = None
