@@ -99,10 +99,10 @@ def createCNNModel(train, data_list, input_dimensions, batch_size, multiModal=Fa
     deepCnn = ConvNN(train, data_list, input_dimensions, numLayers, batch_size,
                         0.001, 0.99, None, lmbda = regConstants, op='Rmsprop')
     print("Building the Deep CNN Model")
-    layersOut, weights = deepCnn.build_model(True, False)
+    layersOut, weights, image, data, label = deepCnn.build_model(True, False)
 
     if multiModal:
-        return layersOut, weights
+        return layersOut, weights, image, data, label
 
     print("Setting up the Training model of the Deep CNN")
     cost, train_op = deepCnn.train()
@@ -110,7 +110,7 @@ def createCNNModel(train, data_list, input_dimensions, batch_size, multiModal=Fa
     return layersOut, weights, cost, train_op
 
 
-def createVanillaNN(train, data_list, input_dimensions, batch_size, multiModal=False):
+def createVanillaNN(train, data_list, input_dimensions, batch_size, multiModal=False, image=None, data=None, label=None):
 
     learning_rate = 0.001
     beta1 = 0.99
@@ -124,26 +124,27 @@ def createVanillaNN(train, data_list, input_dimensions, batch_size, multiModal=F
 
     print("Creating the Convolutional Neural Network Object")
 
-    deepCnn = NeuralNetwork(train, data_list, input_dimensions, batch_size,
-                            0.01, 0.99, None, lmbda=regConstants, op='Rmsprop')
+    deepNN = NeuralNetwork(train, data_list, input_dimensions, batch_size,
+                            0.01, 0.99, None, lmbda=regConstants, op='Rmsprop',
+                            image=image, data=data, label=label)
 
 
     print("Building the Deep CNN Model")
-    layersOut, weights = deepCnn.build_model(numLayers, hidden_units, True, False)
+    layersOut, weights = deepNN.build_model(numLayers, hidden_units, True, False)
 
     if multiModal:
         return layersOut, weights
 
     print("Setting up the Training model of the Deep CNN")
-    cost, train_op = deepCnn.train()
+    cost, train_op = deepNN.train()
 
     return layersOut, weights, cost, train_op
 
 
 def createMultiModalNN(train, binary_filelist, input_dimensions, batch_size):
 
-    layersCnn, weightsCnn = createCNNModel(train, binary_filelist, input_dimensions, batch_size, True)
-    layersFc, weightsFc = createVanillaNN(train, binary_filelist, input_dimensions, batch_size, True)
+    layersCnn, weightsCnn, image, data, label = createCNNModel(train, binary_filelist, input_dimensions, batch_size, True)
+    layersFc, weightsFc = createVanillaNN(train, binary_filelist, input_dimensions, batch_size, True, image, data, label)
 
     learning_rate = 0.001
     beta1 = 0.99
@@ -155,12 +156,12 @@ def createMultiModalNN(train, binary_filelist, input_dimensions, batch_size):
     numLayers = 4
     regConstants = [0.6]*numLayers
     hidden_units = [32, 64, 32, 1]
-    
+
     print("Creating the Multi Modal Convolutional Neural Network Object")
 
-    deepMultiNN = MultiModalNN(train, binary_filelist, layersCnn['layer6-fc'],layersFc['layer4'], layersCnn['output'], batch_size, 
+    deepMultiNN = MultiModalNN(train, binary_filelist, layersCnn['layer6-fc'],layersFc['layer4'], layersCnn['output'], batch_size,
                 learning_rate, beta1, beta2, lmbda = regConstants, op='Rmsprop')
-    
+
 
     print("Building the Multi Modal NN Model")
     layersOut, weights = deepMultiNN.build_model(numLayers, hidden_units, True, False)
@@ -237,7 +238,7 @@ def run_model(train, model, binary_filelist, run_all, batch_size, max_steps):
             print("The current loss is: " + str(loss))
 
             # Checkpoint model at each 100 iterations
-            should_save = i != 0 and i % 100 == 0 or (i+1) == max_steps
+            should_save = i != 0 and i % 1000 == 0 or (i+1) == max_steps
             if should_save and train:
                 checkpoint_path = os.path.join(FLAGS.checkpoint_dir, 'model.ckpt')
                 saver.save(sess, checkpoint_path, global_step=i)
@@ -300,8 +301,8 @@ def main(_):
             binary_filelist = FLAGS.train_binaries
         else:
             binary_filelist = FLAGS.reduced_train_binaries
-        batch_size = 32
-        max_steps = 5000         # can be changed
+        # batch_size = 32
+        max_steps = 10000         # can be changed
     elif args.test: # We have 108 train patients
         if args.model == 'cae':
             binary_filelist = FLAGS.test_binaries

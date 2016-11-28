@@ -7,9 +7,12 @@ import copy
 
 
 class NeuralNetwork(CNNLayers):
-    def __init__(self, train, data_list, input_dimensions, batch_size=1, learning_rate=1e-3, beta1=0.99, beta2=0.99, lmbda=None, op='Rmsprop'):
+    def __init__(self, train, data_list, input_dimensions, batch_size=1, learning_rate=1e-3, beta1=0.99, beta2=0.99, lmbda=None, op='Rmsprop', image=None, data=None, label=None):
         CNNLayers.__init__(self)
-        self.input_image, self.input_data, self.output, self.p_keep = self.createVariables(train, data_list, batch_size, input_dimensions)
+        if image is None and data is None and label is None:
+            self.input_image, self.input_data, self.output, self.p_keep = self.createVariables(train, data_list, batch_size, input_dimensions)
+        else: # what about p_keep - currently not used
+            self.input_image, self.input_data, self.output = image, data, label
         self.input_data = tf.reshape(self.input_data, [batch_size,29 ], name=None)
 
         self.output = tf.reshape(self.output, [batch_size,1 ], name=None)
@@ -20,7 +23,7 @@ class NeuralNetwork(CNNLayers):
         self.lmbda = lmbda
         self.op = op
 
-    def build_model(self, num_layers, hidden_units, sigmoid=True,batch_norm=True):
+    def build_model(self, num_layers, hidden_units, sigmoid=True, batch_norm=True):
         weights = {}
         layersOut = {}
 
@@ -63,7 +66,7 @@ class ConvAutoEncoder(CNNLayers):
     def __init__(self, train, data_list, input_dimensions, batch_size=1, learning_rate=1e-3, beta1=0.99, beta2=0.99, rho=0.4, lmbda = 0.6, op='Rmsprop'):
         CNNLayers.__init__(self)
         self.input_image, self.input_data, self.output, self.p_keep = self.createVariables(train, data_list, batch_size, input_dimensions)
-        
+
         self.batch_size = batch_size
         self.learning_rate = learning_rate
         self.beta1 = beta1
@@ -176,7 +179,7 @@ class ConvNN(CNNLayers):
         self.layersOut = layersOut
         self.weights = weights
 
-        return layersOut, weights
+        return layersOut, weights, self.input_image, self.input_data, self.output
 
     def train(self):
         cost = self.cost_function( self.layersOut['pred'], self.output, op='softmax')
