@@ -138,46 +138,134 @@ class ConvNN(CNNLayers):
         self.lmbda = lmbda
         self.op = op
 
-    def build_model(self, sigmoid, batch_norm):
+    # def build_model(self, sigmoid, batch_norm):
+    #     weights = {}
+    #     layersOut = {}
+
+    #     layersOut['input'] = self.input_image
+    #     layersOut['output'] = self.output
+
+    #     layersOut['layer1'], weights['w1'] = self.conv_layer( self.input_image, [3, 3, 3, 1, 1], [1, 1, 1, 1, 1], 'layer1_filters', '3d','SAME', True, True)
+
+    #     layersOut['layer2'], weights['w2'] = self.conv_layer(layersOut['layer1'], [3, 3, 3, 1, 1], [1, 1, 1, 1, 1], 'layer2_filters', '3d', 'SAME',True, True)
+
+    #     layersOut['layer2-pool'] = self.pool(layersOut['layer2'],[1, 5, 5, 5, 1],[1, 2, 2, 2, 1] , 'max')
+
+    #     layersOut['layer3'], weights['w3']=  self.conv_layer( layersOut['layer2-pool'], [3, 3, 3, 1, 1], [1, 1, 1, 1, 1], 'layer3_filters', '3d','SAME', True, True)
+    #     layersOut['layer4'], weights['w4']=  self.conv_layer( layersOut['layer3'], [3, 3, 3, 1, 1], [1, 1, 1, 1, 1], 'layer4_filters', '3d', 'SAME',True, True)
+
+    #     layersOut['layer4-pool'] = self.pool(layersOut['layer4'],[1, 5, 5, 5, 1],[1, 2, 2, 2, 1] , 'max')
+
+    #     layersOut['layer5'], weights['w5'] =  self.conv_layer( layersOut['layer4-pool'], [3, 3, 3, 1, 1], [1, 1, 1, 1, 1], 'layer5_filters', '3d','SAME', True, True)
+    #     layersOut['layer6'], weights['w6']=  self.conv_layer( layersOut['layer5'], [3, 3, 3, 1, 1], [1, 1, 1, 1, 1], 'layer6_filters', '3d', 'SAME',True, True)
+
+    #     layersOut['layer6-pool'] = self.pool(layersOut['layer6'],[1, 5, 5, 5, 1],[1, 2, 2, 2, 1] , 'max')
+
+    #     fcShapeConv = layersOut['layer6-pool'].get_shape().as_list()
+    #     fcShapeConv = fcShapeConv[1:]
+    #     numParams = reduce(lambda x, y: x*y, fcShapeConv)
+
+    #     layersOut['layer6-fc'] = tf.reshape(layersOut['layer6-pool'], [self.batch_size, numParams])
+    #     layersOut['layer7'], weights['w7'] = self.fcLayer(layersOut['layer6-fc'], [ numParams, numParams], sigmoid, batch_norm)
+    #     layersOut['pred'], weights['w8'] = self.fcLayer(layersOut['layer7'], [ numParams, 1], True, True)
+
+    #     layersOut['pred'] = tf.reshape(layersOut['pred'], [1,self.batch_size], name=None)
+
+    #     layersOut['cnn_out'] = layersOut['layer6-fc']
+
+
+    #     self.layersOut = layersOut
+    #     self.weights = weights
+
+    #     return layersOut, weights
+
+    def build_model(self, conv_arch, cnn_num_layers, cnn_num_fc_layers, 
+                        cnn_filter_sz, cnn_num_filters, cnn_stride_sz, cnn_pool_sz, cnn_pool_stride_sz, cnn_batch_norm):
+
         weights = {}
         layersOut = {}
 
         layersOut['input'] = self.input_image
         layersOut['output'] = self.output
 
-        layersOut['layer1'], weights['w1'] = self.conv_layer( self.input_image, [3, 3, 3, 1, 1], [1, 1, 1, 1, 1], 'layer1_filters', '3d','SAME', True, True)
+        prev_layer = self.input_image
 
-        layersOut['layer2'], weights['w2'] = self.conv_layer(layersOut['layer1'], [3, 3, 3, 1, 1], [1, 1, 1, 1, 1], 'layer2_filters', '3d', 'SAME',True, True)
+        prev_layer_fltr = 1
+        layer_counter = 0
+        num_fc_done = 0
+        while True:
+            i = layer_counter
+            ftlr_sz = cnn_filter_sz[i]
+            ftlr_str_sz = cnn_stride_sz[i]
+            pool_win_sz = cnn_pool_sz[i]
+            pool_str_sz = cnn_pool_stride_sz[i]
+            layer_num_ftlr = cnn_num_filters[i]
 
-        layersOut['layer2-pool'] = self.pool(layersOut['layer2'],[1, 5, 5, 5, 1],[1, 2, 2, 2, 1] , 'max')
+            print("This is the current counter: " + str(layer_counter))
+            if conv_arch[i] == 'conv':
+                w_name = 'layer'+str(i+1)+'_filters'
+                layersOut['layer'+str(i+1)] ,weights['w'+str(i+1)] = self.conv_layer(prev_layer, [ftlr_sz, ftlr_sz, ftlr_sz, prev_layer_fltr ,layer_num_ftlr ],
+                                     [1 , ftlr_str_sz , ftlr_str_sz , ftlr_str_sz, 1], w_name, '3d','SAME', True, cnn_batch_norm)
 
-        layersOut['layer3'], weights['w3']=  self.conv_layer( layersOut['layer2-pool'], [3, 3, 3, 1, 1], [1, 1, 1, 1, 1], 'layer3_filters', '3d','SAME', True, True)
-        layersOut['layer4'], weights['w4']=  self.conv_layer( layersOut['layer3'], [3, 3, 3, 1, 1], [1, 1, 1, 1, 1], 'layer4_filters', '3d', 'SAME',True, True)
+                prev_layer_fltr = layer_num_ftlr
+                print("This is the Convolutional Layer")
+                print("This is the shape of the outputs of this layer: " + str(layersOut['layer'+str(i+1)].get_shape().as_list()))
 
-        layersOut['layer4-pool'] = self.pool(layersOut['layer4'],[1, 5, 5, 5, 1],[1, 2, 2, 2, 1] , 'max')
+            if conv_arch[i] == 'maxpool':
+                layersOut['layer'+str(i+1)] = self.pool(prev_layer,[1, pool_win_sz, pool_win_sz, pool_win_sz, 1],
+                                                [1, pool_str_sz, pool_str_sz, pool_str_sz, 1] , 'max')
+                print("This is the Max Pool Layer")
+                print("This is the shape of the outputs of this layer: " + str(layersOut['layer'+str(i+1)].get_shape().as_list()))
 
-        layersOut['layer5'], weights['w5'] =  self.conv_layer( layersOut['layer4-pool'], [3, 3, 3, 1, 1], [1, 1, 1, 1, 1], 'layer5_filters', '3d','SAME', True, True)
-        layersOut['layer6'], weights['w6']=  self.conv_layer( layersOut['layer5'], [3, 3, 3, 1, 1], [1, 1, 1, 1, 1], 'layer6_filters', '3d', 'SAME',True, True)
+            if conv_arch[i] == 'avgpool':
+                layersOut['layer'+str(i+1)] = self.pool(prev_layer,[1, pool_win_sz, pool_win_sz, pool_win_sz, 1],
+                                                [1, pool_str_sz, pool_str_sz, pool_str_sz, 1] , 'avg')
+                print("This is the Average Pool Layer")
+                print("This is the shape of the outputs of this layer: " + str(layersOut['layer'+str(i+1)].get_shape().as_list()))
 
-        layersOut['layer6-pool'] = self.pool(layersOut['layer6'],[1, 5, 5, 5, 1],[1, 2, 2, 2, 1] , 'max')
+            if conv_arch[i] == 'reshape':
+                fcShapeConv = prev_layer.get_shape().as_list()
+                fcShapeConv = fcShapeConv[1:]
+                self.cnn_out_params = reduce(lambda x, y: x*y, fcShapeConv)
+                layersOut['layer'+str(i+1)+'-fc'] = tf.reshape( prev_layer, [self.batch_size, self.cnn_out_params])
+                layersOut['cnn_out'] = layersOut['layer'+str(i+1)+'-fc'] 
+                prev_layer = layersOut['layer'+str(i+1)+'-fc']
+                layer_counter += 1
+                print("This is the FC Reshape Layer")
+                print("This is the shape of the outputs of this layer: " + str(layersOut['layer'+str(i+1)+'-fc'].get_shape().as_list()))
+                print()
+                continue
 
-        fcShapeConv = layersOut['layer6-pool'].get_shape().as_list()
-        fcShapeConv = fcShapeConv[1:]
-        numParams = reduce(lambda x, y: x*y, fcShapeConv)
+            if conv_arch[i] == 'fc':
+                in_weights = self.cnn_out_params 
+                out_weights =  self.cnn_out_params if (num_fc_done < cnn_num_fc_layers-1) else 1
+                layersOut['layer'+str(i+1)] ,weights['w'+str(i+1)] = self.fcLayer(prev_layer, 
+                                                    [in_weights , out_weights], True,  cnn_batch_norm)
+                num_fc_done += 1
+                print("This is the FC NN Layer")
+                print("This is the shape of the outputs of this layer: " + str(layersOut['layer'+str(i+1)].get_shape().as_list()))
 
-        layersOut['layer6-fc'] = tf.reshape(layersOut['layer6-pool'], [self.batch_size, numParams])
-        layersOut['layer7'], weights['w7'] = self.fcLayer(layersOut['layer6-fc'], [ numParams, numParams], sigmoid, batch_norm)
-        layersOut['pred'], weights['w8'] = self.fcLayer(layersOut['layer7'], [ numParams, 1], True, True)
 
-        layersOut['pred'] = tf.reshape(layersOut['pred'], [1,self.batch_size], name=None)
 
-        layersOut['cnn_out'] = layersOut['layer6-fc']
+            prev_layer = layersOut['layer'+str(i+1)]
+            layer_counter += 1
+
+            if layer_counter == cnn_num_layers:
+                layersOut['pred']  = layersOut['layer'+str(layer_counter)]
+                layersOut['pred'] = tf.reshape(layersOut['pred'], [1,self.batch_size], name=None)
+                break
 
 
         self.layersOut = layersOut
         self.weights = weights
 
         return layersOut, weights
+
+
+
+
+
+
 
     def train(self):
         cost = self.cost_function( self.layersOut['pred'], self.output, op='softmax')

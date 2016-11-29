@@ -64,23 +64,22 @@ MMNN_BETA_2 = None
 #############################################################################################
 
 
-# Convolutional Neural Network (CNN)
-CNN_NUM_CONV_LAYERS = 6
-CNN_NUM_POOL_LAYERS = 3
-
 # Architecture of Conv Net
-# Options available: 'conv' 'maxpool' 'avgpool'
-CONV_ARCH = ['conv', 'conv', 'maxpool', 'conv', 'conv', 'maxpool', 'conv', 'conv', 'maxpool']
+# Options available: 'conv' 'maxpool' 'avgpool' 'reshape' 'fc'
+CONV_ARCH = ['conv', 'conv', 'maxpool', 'conv', 'conv', 'maxpool', 'conv', 'conv', 'maxpool', 'reshape', 'fc', 'fc']
+
+# Number of layers in the CNN, excluding the reshape layer
+CNN_NUM_LAYERS = len(CONV_ARCH)
 
 CNN_NUM_FC_LAYERS = 2
 
-CNN_REG_CONSTANTS = [0.6]*(CNN_NUM_CONV_LAYERS + CNN_NUM_FC_LAYERS)
+CNN_REG_CONSTANTS = [0.6]*CNN_NUM_LAYERS 
 
-CNN_FILTER_SZ = [3, 3, None, 3, 3, None, 3, 3, None]
-CNN_NUM_FILTERS = [1, 1, None, 1, 1, None, 1, 1, None] # right now you can't change this
-CNN_STRIDE_SZ = [1, 1, None, 1, 1, None, 1, 1, None]
-CNN_POOL_SZ = [None, None, 5, None, None, 5, None, None, 5]
-CNN_POOL_STRIDE_SZ = [None, None, 2, None, None, 2, None, None, 2]
+CNN_FILTER_SZ = [3, 3, None, 3, 3, None, 3, 3, None, None, None, None]
+CNN_NUM_FILTERS = [1, 1, None, 1, 1, None, 1, 1, None, None, None, None] # right now you can't change this
+CNN_STRIDE_SZ = [1, 1, None, 1, 1, None, 1, 1, None, None, None, None]
+CNN_POOL_SZ = [None, None, 5, None, None, 5, None, None, 5, None, None, None]
+CNN_POOL_STRIDE_SZ = [None, None, 2, None, None, 2, None, None, 2, None, None, None]
 
 
 # Learning rate for backpropogation

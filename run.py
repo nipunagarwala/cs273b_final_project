@@ -99,11 +99,13 @@ def createCNNModel(train, data_list, input_dimensions, batch_size, multiModal=Fa
     print("Creating the Convolutional Neural Network Object")
 
     deepCnn = ConvNN(train, data_list, input_dimensions, numLayers, batch_size,
-                        0.001, 0.99, None, lmbda = regConstants, op='Rmsprop')
+                        CNN_LEARNING_RATE, CNN_BETA_1, CNN_BETA_2, lmbda = CNN_REG_CONSTANTS , op=CNN_OP)
     print("Building the Deep CNN Model")
     # layersOut, weights, image, data, label = deepCnn.build_model(True, False)
 
-    layersOut, weights =  deepCnn.build_model(True, False)
+    # layersOut, weights =  deepCnn.build_model(True, False)
+    layersOut, weights =  deepCnn.build_model(CONV_ARCH, CNN_NUM_LAYERS, CNN_NUM_FC_LAYERS, 
+                        CNN_FILTER_SZ, CNN_NUM_FILTERS, CNN_STRIDE_SZ, CNN_POOL_SZ, CNN_POOL_STRIDE_SZ, CNN_BATCH_NORM)
 
     if multiModal:
         # return layersOut, weights, image, data, label
