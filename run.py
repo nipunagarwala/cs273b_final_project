@@ -185,7 +185,7 @@ def createMultiModalNN(train, binary_filelist, input_dimensions, batch_size):
 
 
 
-def run_model(train, model, binary_filelist, run_all, batch_size, max_steps):
+def run_model(train, model, binary_filelist, run_all, batch_size, max_steps, overrideChkpt):
     input_dimensions = [31, 37, 31]
     if model == 'cae':
         input_dimensions = [91, 109, 91]
@@ -224,11 +224,14 @@ def run_model(train, model, binary_filelist, run_all, batch_size, max_steps):
         ckpt = tf.train.get_checkpoint_state(FLAGS.checkpoint_dir)
         if train:
             # Get checkpoint at step: i_stopped
-            if ckpt and ckpt.model_checkpoint_path:
+            if (not overrideChkpt) and ckpt and ckpt.model_checkpoint_path:
                 saver.restore(sess, ckpt.model_checkpoint_path)
                 print("Fetching checkpoint data from:")
                 print(ckpt.model_checkpoint_path)
                 i_stopped = int(ckpt.model_checkpoint_path.split('/')[-1].split('-')[-1])
+            elif overrideChkpt:
+                print('Overriding the checkpoints!')
+                i_stopped = 0
             else:
                 print('No checkpoint file found!')
                 i_stopped = 0
@@ -306,6 +309,9 @@ def main(_):
                         help='Directory to save the checkpoints. Default is /data/ckpt')
     parser.add_argument('--numIters', dest='numIters', default=200, type=int,
                         help='Number of Training Iterations. Default is 200')
+    parser.add_argument('--overrideChkpt', dest='overrideChkpt', action="store_true", 
+                        help='Override the checkpoints')
+    parser.set_defaults(overrideChkpt=False)
     args = parser.parse_args()
 
     binary_filelist = None
@@ -338,7 +344,7 @@ def main(_):
         print "Directory '%s' does not exist." % args.chkPt
     FLAGS.checkpoint_dir = args.chkPt
 
-    run_model(args.train, args.model, binary_filelist, run_all, batch_size, max_steps)
+    run_model(args.train, args.model, binary_filelist, run_all, batch_size, max_steps, args.overrideChkpt)
 
 
 if __name__ == "__main__":

@@ -11,7 +11,7 @@
 # Convolutional Auto Encoder (CAE)
 CAE_NUM_ENCODE_LAYERS = 2
 CAE_FILTER_SZ = [3,3]
-CAE_NUM_FILTERS = [10,1] # right now you can't change this
+CAE_NUM_FILTERS = [1,1]
 CAE_STRIDE_SZ = [1,3]
 CAE_LEARNING_RATE = 0.001
 
@@ -78,7 +78,7 @@ CNN_MMLAYER = 10
 CNN_REG_CONSTANTS = [0.6]*CNN_NUM_LAYERS 
 
 CNN_FILTER_SZ = [3, 3, None, 3, 3, None, 3, 3, None, None, None, None]
-CNN_NUM_FILTERS = [10, 10, None, 10, 10, None, 10, 1, None, None, None, None] # right now you can't change this
+CNN_NUM_FILTERS = [10, 10, None, 10, 10, None, 10, 1, None, None, None, None]
 CNN_STRIDE_SZ = [1, 1, None, 1, 1, None, 1, 1, None, None, None, None]
 CNN_POOL_SZ = [None, None, 5, None, None, 5, None, None, 5, None, None, None]
 CNN_POOL_STRIDE_SZ = [None, None, 2, None, None, 2, None, None, 2, None, None, None]
