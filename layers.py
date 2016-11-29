@@ -39,6 +39,7 @@ class Layers(object):
         next_layer = tf.tanh(prev_layer)
         return next_layer
 
+
     def batch_norm(self, prev_layer, axes, beta_shape,scale_shape, var_eps = 1e-6):
         mu, sigma = tf.nn.moments(prev_layer, axes)
         beta = self.init_weights(beta_shape)
@@ -56,27 +57,26 @@ class Layers(object):
             next_layer = self.relu(next_layer)
 
 
-        return next_layer, wOut
+        return next_layer, wOut, b
 
     def cost_function(self, model_output, Y, op='square'):
         cost = None
         if  op == 'square':
             cost = tf.reduce_mean(tf.square(tf.sub(model_output,Y)))
-        elif op == 'cross-entropy':
-            Yint = tf.to_int32(Y, name='ToInt64')
+        elif op == 'sigmoid':
             epsilon = 10e-8
             output = tf.clip_by_value(model_output, epsilon, 1 - epsilon)
             # Create logit of output
             output_logit = tf.log(output / (1 - output))
             # Reshape for comparison
-            cost = tf.nn.sigmoid_cross_entropy_with_logits(output_logit, Yint)
+            cost = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(output_logit, Y))
         elif op == 'softmax':
             Yint = tf.to_int32(Y, name='ToInt64')
             epsilon = 10e-6
             output = tf.clip_by_value(model_output, epsilon, 1 - epsilon)
             # Create logit of output
             output_logit = tf.log(output / (1 - output))
-            cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(output_logit , Yint))
+            cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(model_output , Yint))
 
         return cost
 
@@ -97,6 +97,8 @@ class Layers(object):
             nextLoss = tf.add(loss, tf.mul(lmbda,tf.reduce_mean(tf.square(wgt))))
         elif op == 'kl':
             nextLoss = tf.add(loss, tf.mul(lmbda, self.kl_sparse_regularization(wgt, lmbda, rho)))
+        elif op == 'l1':
+            nextLoss = tf.add(loss, tf.mul(lmbda,tf.reduce_mean(tf.abs(wgt))))
         return nextLoss
 
     def kl_sparse_regularization(self, wgt, lmbda, rho):
@@ -150,7 +152,7 @@ class CNNLayers(Layers):
             nextLayer = self.relu(nextLayer)
 
 
-        return nextLayer, w_conv
+        return nextLayer, w_conv, b
 
 
     def deconv_layer(self, prev_layer_out, filter_shape, out_shape, layer_stride, w_name, num_dim = '2d',padding='SAME', if_relu = True, batchNorm = True):

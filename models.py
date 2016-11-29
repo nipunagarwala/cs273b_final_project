@@ -137,6 +137,7 @@ class ConvNN(CNNLayers):
         self.beta2 = beta2
         self.lmbda = lmbda
         self.op = op
+        self.output = tf.reshape(self.output, [1,self.batch_size], name=None)
 
     # def build_model(self, sigmoid, batch_norm):
     #     weights = {}
@@ -184,6 +185,7 @@ class ConvNN(CNNLayers):
 
         weights = {}
         layersOut = {}
+        biases = {}
 
         layersOut['input'] = self.input_image
         layersOut['output'] = self.output
@@ -204,7 +206,7 @@ class ConvNN(CNNLayers):
             print("This is the current counter: " + str(layer_counter))
             if conv_arch[i] == 'conv':
                 w_name = 'layer'+str(i+1)+'_filters'
-                layersOut['layer'+str(i+1)] ,weights['w'+str(i+1)] = self.conv_layer(prev_layer, [ftlr_sz, ftlr_sz, ftlr_sz, prev_layer_fltr ,layer_num_ftlr ],
+                layersOut['layer'+str(i+1)] ,weights['w'+str(i+1)], biases['b'+str(i+1)]= self.conv_layer(prev_layer, [ftlr_sz, ftlr_sz, ftlr_sz, prev_layer_fltr ,layer_num_ftlr ],
                                      [1 , ftlr_str_sz , ftlr_str_sz , ftlr_str_sz, 1], w_name, '3d','SAME', True, cnn_batch_norm)
 
                 prev_layer_fltr = layer_num_ftlr
@@ -239,8 +241,9 @@ class ConvNN(CNNLayers):
             if conv_arch[i] == 'fc':
                 in_weights = self.cnn_out_params 
                 out_weights =  self.cnn_out_params if (num_fc_done < cnn_num_fc_layers-1) else 1
-                layersOut['layer'+str(i+1)] ,weights['w'+str(i+1)] = self.fcLayer(prev_layer, 
-                                                    [in_weights , out_weights], True,  cnn_batch_norm)
+                sigm = True if (num_fc_done < cnn_num_fc_layers-1) else False 
+                layersOut['layer'+str(i+1)] ,weights['w'+str(i+1)], biases['b'+str(i+1)] = self.fcLayer(prev_layer, 
+                                                    [in_weights , out_weights], sigm, True)
                 num_fc_done += 1
                 print("This is the FC NN Layer")
                 print("This is the shape of the outputs of this layer: " + str(layersOut['layer'+str(i+1)].get_shape().as_list()))
@@ -251,30 +254,29 @@ class ConvNN(CNNLayers):
             layer_counter += 1
 
             if layer_counter == cnn_num_layers:
-                layersOut['pred']  = layersOut['layer'+str(layer_counter)]
+                layersOut['pred']  = self.sigmoid(layersOut['layer'+str(layer_counter)])
+                # layersOut['pred'] = tf.transpose(layersOut['pred'], perm=None, name='transpose')
                 layersOut['pred'] = tf.reshape(layersOut['pred'], [1,self.batch_size], name=None)
                 break
 
 
         self.layersOut = layersOut
         self.weights = weights
+        self.biases = biases
 
         return layersOut, weights
 
 
-
-
-
-
-
     def train(self):
-        cost = self.cost_function( self.layersOut['pred'], self.output, op='softmax')
+        cost = self.cost_function( self.layersOut['pred'], self.output, op='sigmoid')
         cumCost = cost
         numEntries = len(self.weights)
 
         weightVals = self.weights.values()
+        biasVals = self.biases.values()
         for i in range(numEntries):
             cumCost = self.add_regularization( cumCost, weightVals[i], self.lmbda[i], None, op='l2')
+            cumCost = self.add_regularization( cumCost, biasVals[i], self.lmbda[i], None, op='l2')
 
         train_op = self.minimization_function(cumCost, self.learning_rate, self.beta1, self.beta2, self.op)
         return cumCost, train_op
@@ -305,30 +307,36 @@ class MultiModalNN(CNNLayers):
 
         weights = {}
         layersOut = {}
+        biases = {}
 
         prev_layer = concatIn
 
         for i in range(num_layers):
-            layersOut['layer'+str(i+1)] ,weights['w'+str(i+1)] = self.fcLayer(prev_layer, [prev_shape, hidden_units[i]], sigmoid, batch_norm)
+            lastSigm = True if i < (num_layers-1) else False
+            lastBatch = True if i < (num_layers-1) else False
+            layersOut['layer'+str(i+1)] ,weights['w'+str(i+1)] , biases['b'+str(i+1)]= self.fcLayer(prev_layer, [prev_shape, hidden_units[i]], lastSigm, lastBatch)
             prev_shape = hidden_units[i]
             prev_layer = layersOut['layer'+str(i+1)]
 
-        layersOut['pred'] = prev_layer
+        layersOut['pred'] = self.sigmoid(rev_layer)
         layersOut['pred'] = tf.reshape(layersOut['pred'], [1,self.batch_size], name=None)
 
         self.layersOut = layersOut
         self.weights = weights
+        self.biases = biases
 
         return layersOut, weights
 
     def train(self):
-        cost = self.cost_function(self.layersOut['pred'], self.output, op='softmax')
+        cost = self.cost_function(self.layersOut['pred'], self.output, op='sigmoid')
         cumCost = cost
         numEntries = len(self.weights)
 
-        weightVals = self.weights.values()
-        for i in range(numEntries):
+        weightVals = self.weights.values() 
+        biasVals = self.biases.values()
+        for i in range(numEntries-2):
             cumCost = self.add_regularization( cumCost, weightVals[i], self.lmbda[i], None, op='l2')
+            cumCost = self.add_regularization( cumCost, biasVals[i], self.lmbda[i], None, op='l2')
 
         train_op = self.minimization_function(cumCost, self.learning_rate, self.beta1, self.beta2, self.op)
         return cumCost, train_op

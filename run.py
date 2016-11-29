@@ -252,6 +252,7 @@ def run_model(train, model, binary_filelist, run_all, batch_size, max_steps, ove
             else:
                 loss = sess.run(cost)
             print("The current loss is: " + str(loss))
+            # print("Current predicted labels are: " + str(layer_outputs['pred'].eval()))
 
             # Checkpoint model at each 100 iterations
             should_save = i != 0 and i % 1000 == 0 or (i+1) == max_steps
@@ -315,7 +316,7 @@ def main(_):
     args = parser.parse_args()
 
     binary_filelist = None
-    batch_size = 1
+    batch_size = 32
     max_steps = 1071
     run_all = False
 

@@ -66,38 +66,39 @@ MMNN_BETA_2 = None
 
 # Architecture of Conv Net
 # Options available: 'conv' 'maxpool' 'avgpool' 'reshape' 'fc'
-CONV_ARCH = ['conv', 'conv', 'maxpool', 'conv', 'conv', 'maxpool', 'conv', 'conv', 'maxpool', 'reshape', 'fc', 'fc']
+CONV_ARCH = ['conv', 'conv', 'maxpool', 'conv', 'conv', 'maxpool', 'conv', 'conv', 'maxpool',
+		 'conv', 'conv', 'maxpool','conv', 'conv', 'maxpool','reshape', 'fc', 'fc', 'fc']
 
 # Number of layers in the CNN, excluding the reshape layer
 CNN_NUM_LAYERS = len(CONV_ARCH)
 
-CNN_NUM_FC_LAYERS = 2
+CNN_NUM_FC_LAYERS = 3
 
 CNN_MMLAYER = 10
 
-CNN_REG_CONSTANTS = [0.6]*CNN_NUM_LAYERS 
+CNN_REG_CONSTANTS = [0.9]*CNN_NUM_LAYERS 
 
-CNN_FILTER_SZ = [3, 3, None, 3, 3, None, 3, 3, None, None, None, None]
-CNN_NUM_FILTERS = [10, 10, None, 10, 10, None, 10, 1, None, None, None, None]
-CNN_STRIDE_SZ = [1, 1, None, 1, 1, None, 1, 1, None, None, None, None]
-CNN_POOL_SZ = [None, None, 5, None, None, 5, None, None, 5, None, None, None]
-CNN_POOL_STRIDE_SZ = [None, None, 2, None, None, 2, None, None, 2, None, None, None]
+CNN_FILTER_SZ = [5, 5, None, 3, 3, None, 3, 3, None, 3, 3, None, 3, 3, None, None, None, None, None]
+CNN_NUM_FILTERS = [16, 32, None, 32, 32, None,32, 32, None,32, 32, None, 16, 1, None, None, None, None, None]
+CNN_STRIDE_SZ = [1, 1, None, 1, 1, None, 1, 1, None,1, 1, None,1, 1, None, None, None, None, None]
+CNN_POOL_SZ = [None, None, 3,None, None, 3,None, None, 3, None, None, 3, None, None, 3, None, None, None, None]
+CNN_POOL_STRIDE_SZ = [None, None, 1,None, None, 1,None, None, 2, None, None, 2, None, None, 1, None, None, None, None]
 
 
 # Learning rate for backpropogation
-CNN_LEARNING_RATE = 0.001
+CNN_LEARNING_RATE = 0.0001
 
 # apply batch norm or not
 CNN_BATCH_NORM = True
 
 # options for the optimizers: 'Rmsprop' 'adam' 'adagrad'
-CNN_OP = 'Rmsprop'
+CNN_OP = 'adam'
 
 # decay rates for the optimizers
-CNN_BETA_1 = 0.99
+CNN_BETA_1 = 0.1
 
 # decay rate used by 'adam'
-CNN_BETA_2 = None
+CNN_BETA_2 = 0.01
 
 #############################################################################################
 ##																						   ##
