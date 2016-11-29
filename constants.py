@@ -73,6 +73,8 @@ CNN_NUM_LAYERS = len(CONV_ARCH)
 
 CNN_NUM_FC_LAYERS = 2
 
+CNN_MMLAYER = 10
+
 CNN_REG_CONSTANTS = [0.6]*CNN_NUM_LAYERS 
 
 CNN_FILTER_SZ = [3, 3, None, 3, 3, None, 3, 3, None, None, None, None]

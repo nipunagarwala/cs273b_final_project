@@ -129,20 +129,20 @@ def createVanillaNN(train, data_list, input_dimensions, batch_size, multiModal=F
     regConstants = NN_REG_CONSTANTS
     hidden_units = NN_HIDDEN_UNITS
 
-    print("Creating the Convolutional Neural Network Object")
+    print("Creating the Vannil Neural Network Object")
 
     deepNN = NeuralNetwork(train, data_list, input_dimensions, batch_size,
                             learning_rate, beta1, beta2, lmbda=regConstants, op=op)
                             # image=image, data=data, label=label)
 
 
-    print("Building the Deep CNN Model")
+    print("Building the Vanilla Neural Network Model")
     layersOut, weights = deepNN.build_model(len(NN_HIDDEN_UNITS), hidden_units, sigmoidOn, batchOn, NN_MMLAYER)
 
     if multiModal:
         return layersOut, weights
 
-    print("Setting up the Training model of the Deep CNN")
+    print("Setting up the Training model of the Vanilla Neural Network ")
     cost, train_op = deepNN.train()
 
     return layersOut, weights, cost, train_op
@@ -168,7 +168,7 @@ def createMultiModalNN(train, binary_filelist, input_dimensions, batch_size):
 
     print("Creating the Multi Modal Convolutional Neural Network Object")
 
-    deepMultiNN = MultiModalNN(train, binary_filelist, layersCnn['layer6-fc'],layersFc['layer4'], layersCnn['output'], batch_size,
+    deepMultiNN = MultiModalNN(train, binary_filelist, layersCnn['layer'+str(CNN_MMLAYER)+'-fc'],layersFc['layer'+str(NN_MMLAYER)], layersCnn['output'], batch_size,
                 learning_rate, beta1, beta2, lmbda = regConstants, op='Rmsprop')
 
 
