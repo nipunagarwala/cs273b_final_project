@@ -337,10 +337,6 @@ class MultiModalNN(CNNLayers):
 
 
 
-
-
-
-
 # class ResCNN(CNNLayers):
 #     def __init__(self, train, data_list, input_dimensions, batch_size=1, learning_rate=1e-3, beta1=0.99, beta2=0.99, rho=0.4, lmbda = 0.6, op='Rmsprop'):
 #         CNNLayers.__init__(self)

@@ -51,9 +51,14 @@ def createAutoEncoderModel(train, data_list, input_dimensions, batch_size):
     op = CAE_OP
     batchOn = CAE_BATCH_NORM
 
+    prev_filter = 1
+    cnt = 0
     allFilters = []
     for i in filter_sz:
-        allFilters.append([i,i,i,1,1])
+        allFilters.append([i,i,i,prev_filter,num_filters[cnt]])
+        prev_filter = num_filters[cnt]
+        cnt += 1
+
     allStrides = []
     for i in stride_sz:
         allStrides.append([1,i,i,i,1])
