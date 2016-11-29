@@ -48,26 +48,29 @@ python run.py --test --model mmnn
 **Note:** If no `--model` is supplied, it defaults to `mmnn`
 
 ### Additional Flags Added by Yuki
+
 ```--numIters``` - Number of batches to run for the training set. Defaults to 200.
+
 ```--chkPointDir``` - Directory where checkpoint files are stored. Defaults to '/data/ckpt'
+
 ```--overrideChkpt``` - Add this flag if you want to ignore the checkpoint files already in the checkpoint directory.
 
 #### Example Usages:
 
-'''
+```
 Training CNN with 1000 iterations, store checkpoints in '/data/ckpt'
 python run.py --train --model cnn --numIters 1000
-'''
+```
 
-'''
+```
 Training MMNN with 1000 iterations from a checkpoint stored under file './chkpt'
 python run.py --train --model mmnn --numIters 1000 --chkPointDir ./chkpt
-'''
+```
 
-'''
+```
 Training CNN with 1000 iterations, store checkpoints in './chkpt', but ignore any checkpoints already stored in that directory
 python run.py --train --overrideChkpt --model cnn --numIters 1000 --chkPointDir ./chkpt
-'''
+```
 
 ## Convolutional Autoencoder
 
