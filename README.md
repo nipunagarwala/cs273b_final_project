@@ -57,21 +57,15 @@ python run.py --test --model mmnn
 
 #### Example Usages:
 
-```
 Training CNN with 1000 iterations, store checkpoints in '/data/ckpt'
-python run.py --train --model cnn --numIters 1000
-```
+```python run.py --train --model cnn --numIters 1000```
 
-```
 Training MMNN with 1000 iterations from a checkpoint stored under file './chkpt'
-python run.py --train --model mmnn --numIters 1000 --chkPointDir ./chkpt
-```
+```python run.py --train --model mmnn --numIters 1000 --chkPointDir ./chkpt```
 
-```
 Training CNN with 1000 iterations, store checkpoints in './chkpt', 
 but ignore any checkpoints already stored in that directory
-python run.py --train --overrideChkpt --model cnn --numIters 1000 --chkPointDir ./chkpt
-```
+```python run.py --train --overrideChkpt --model cnn --numIters 1000 --chkPointDir ./chkpt```
 
 ## Convolutional Autoencoder
 
