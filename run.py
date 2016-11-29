@@ -13,8 +13,6 @@ FLAGS = tf.app.flags.FLAGS
 
 tf.app.flags.DEFINE_string('train_dir', '/data/train',
                            """Directory where to write event logs """)
-tf.app.flags.DEFINE_string('checkpoint_dir', '/data/ckpt',
-                           """Directory where to write checkpoints """)
 
 tf.app.flags.DEFINE_string('train_binaries', '/data/train.json',
                            """File containing list of binary filenames used for training """)
@@ -223,6 +221,7 @@ def run_model(train, model, binary_filelist, run_all, batch_size, max_steps):
             # Get checkpoint at step: i_stopped
             if ckpt and ckpt.model_checkpoint_path:
                 saver.restore(sess, ckpt.model_checkpoint_path)
+                print("Fetching checkpoint data from:")
                 print(ckpt.model_checkpoint_path)
                 i_stopped = int(ckpt.model_checkpoint_path.split('/')[-1].split('-')[-1])
             else:
@@ -275,9 +274,9 @@ def run_model(train, model, binary_filelist, run_all, batch_size, max_steps):
             # If running all files for CAE
             if not train and run_all:
                 create_brain_binaries.save_and_split(compressed_filelist,
-                output_binary_filelist,
-                FLAGS.reduced_train_binaries,
-                FLAGS.reduced_test_binaries)
+                                                     output_binary_filelist,
+                                                     FLAGS.reduced_train_binaries,
+                                                     FLAGS.reduced_test_binaries)
 
             encodeLayer = np.asarray(sess.run(encode))
             decodeLayer = np.asarray(sess.run(decode))
@@ -298,6 +297,10 @@ def main(_):
     data_group.add_argument('--test', action="store_true", help='Testing the model')
     network_group.add_argument('--model', choices=['cae', 'cnn', 'nn', 'mmnn'],
                         default='mmnn', help='Select model to run.')
+    parser.add_argument('--chkPointDir', dest='chkPt', default='/data/ckpt',
+                        help='Directory to save the checkpoints. Default is /data/ckpt')
+    parser.add_argument('--numIters', dest='numIters', default=200, type=int,
+                        help='Number of Training Iterations. Default is 200')
     args = parser.parse_args()
 
     binary_filelist = None
@@ -311,7 +314,7 @@ def main(_):
         else:
             binary_filelist = FLAGS.reduced_train_binaries
         # batch_size = 32
-        max_steps = 10000         # can be changed
+        max_steps = args.numIters
     elif args.test: # We have 108 train patients
         if args.model == 'cae':
             binary_filelist = FLAGS.test_binaries
@@ -324,6 +327,11 @@ def main(_):
         else:
             binary_filelist = FLAGS.reduced_all_binaries
         run_all = True
+
+    # set the checkpoint directory.
+    if not os.path.exists(args.chkPt):
+        print "Directory '%s' does not exist." % args.chkPt
+    FLAGS.checkpoint_dir = args.chkPt
 
     run_model(args.train, args.model, binary_filelist, run_all, batch_size, max_steps)
 
