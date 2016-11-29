@@ -68,7 +68,8 @@ python run.py --train --model mmnn --numIters 1000 --chkPointDir ./chkpt
 ```
 
 ```
-Training CNN with 1000 iterations, store checkpoints in './chkpt', but ignore any checkpoints already stored in that directory
+Training CNN with 1000 iterations, store checkpoints in './chkpt', 
+but ignore any checkpoints already stored in that directory
 python run.py --train --overrideChkpt --model cnn --numIters 1000 --chkPointDir ./chkpt
 ```
 
