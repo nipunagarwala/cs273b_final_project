@@ -69,6 +69,22 @@ Training CNN with 1000 iterations, store checkpoints in './chkpt', but ignore an
 
 	python run.py --train --overrideChkpt --model cnn --numIters 1000 --chkPointDir ./chkpt
 
+
+## Network Architecture Training Notes and Tips:
+
+- Batch Normalization as its introductory paper suggests, improves performance and acheives the optimal solution in fewer iterations many of
+the times. This is true for Multi-Modal architectures, including the Vanilla NN and the Convolutional Neural Network. But for the
+Convolutional Autoencoder this does not seem to be true completely. Batch Norm does help, but Autoencoders in general are *extremely*
+susceptible to weight initialization. We hope to use the Xavier initialization sometime soon.
+
+- L1 regularizations work suprisingly well for Deeper networks (Convolutional and Vanilla), especially when Residual Networks are not used.
+Deep networks may have sparse features in many layers, and L1 regularization as popularly known is best for enforcing sparsity.
+Residual Networks get around sparse features using the identity mapping in their skip connections.
+
+- To train such deep networks, we need to train it for at least 30 Epochs in practice, after which we should be mindful of overfitting
+and generalization error. [Note: Epoch is defined as a pass through the entire dataset. After each epoch, it is preferable to re-shuffle
+the dataset to allow for better generalization and prevent overfitting]
+
 ## Convolutional Autoencoder
 
 ### Configurations
