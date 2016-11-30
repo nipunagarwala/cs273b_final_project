@@ -4,6 +4,7 @@ import numpy as np
 import csv
 import itertools
 import matplotlib as ml
+import os
 ml.use("agg")
 import matplotlib.pyplot as plt
 import math
@@ -137,6 +138,53 @@ def loadfALFF_All():
         sizeReduction(data, (30, 36, 30), opt=2, poolBox=(3,3,3), filename='pooledData/randomPool_'+str(i)+'_reduce3')
         sizeReduction(data, (45, 54, 45), opt=3, poolBox=(2,2,2), filename='pooledData/maxPool_'+str(i)+'_reduce2')
         sizeReduction(data, (30, 36, 30), opt=3, poolBox=(3,3,3), filename='pooledData/maxPool_'+str(i)+'_reduce3')
+
+BRAIN_REGIONS = 116
+def loadROI(patientID):
+    """
+    Converts the fALFF ROI data to covariance matricies.
+
+    @type   patientID   :   int
+    @param  patientID   :   id of the patient to load the brain.
+
+    @rtype              :   2D numpy matrix
+    @return             :   Covariance matrix
+    """
+    with open('/data/processed_phenotype_data.csv') as csvfile:
+        id = next(itertools.islice(csv.reader(csvfile), patientID, None))[2]
+
+    count = 0
+    fileName = '/data/CS_273B_Final_Project/'+str(id)+' _data.csv'
+    if not os.path.isfile(fileName):
+        return
+
+    csvfile = open(fileName, 'rb')
+    csvR = csv.reader(csvfile)
+    row_count = sum(1 for row in csvR)-1
+    csvfile.seek(0)
+
+    roiMat = np.empty((row_count,BRAIN_REGIONS),dtype='float')
+    first = True
+    count = 0
+    for row in csvR:
+        if first:
+            first = False
+            continue
+
+        roiMat[count,:] = [float(s) for s in row[1:]]
+        count += 1
+
+    return np.cov(np.transpose(roiMat))
+
+def loadROI_All():
+    """
+    Dumps covariance data under ./ROI directory
+    Make sure you already have ./ROI created
+    """
+    for i in xrange(1,1072):
+        covData = loadROI(i)
+        if covData is not None:
+            np.save('./ROI/'+str(i), covData)
 
 def mat2visual(mat, zLocs, filename, valRange=(0,1)):
     """
