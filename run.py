@@ -78,7 +78,7 @@ def createAutoEncoderModel(image, output, p_keep_conv,batch_size):
     #rhoVec = [0.1]*numForwardLayers*2
 
     print("Creating the Convolutional AutoEncoder Object")
-    cae = ConvAutoEncoder(image, output, p_keep_conv,
+    cae = ConvAutoEncoder(image, output, p_keep_conv,batch_size,
                     learning_rate, beta1, beta2, rho=rho, lmbda=lmbda, op=op)
 
     allNames = ["layer1_filters","layer2_filters","layer3_filters","layer4_filters","layer5_filters","layer6_filters",
@@ -94,15 +94,15 @@ def createAutoEncoderModel(image, output, p_keep_conv,batch_size):
     allBatch[2*numForwardLayers-1] = False
 
     print("Building the Convolutional Autoencoder Model")
-    layer_outputs, weights, weight_shapes, encode, \
-    decode, brain_image, pheno_data, label = cae.build_model(numForwardLayers,
+    layer_outputs, weights, encode, \
+    decode, brain_image = cae.build_model(numForwardLayers,
                             allFilters, allStrides, allNames, allRelu, allBatch)
 
 
     print("Setting up the Training model of the Autoencoder")
     cost, train_op = cae.train()
-    return layer_outputs, weights, weight_shapes, encode, decode, \
-                        brain_image, pheno_data, label, cost, train_op
+    return layer_outputs, weights, encode, decode, \
+                        brain_image, cost, train_op
 
 
 def createCNNModel(image, output, p_keep_conv,batch_size, multiModal=False):
@@ -204,8 +204,8 @@ def run_model(train, model, binary_filelist, run_all, batch_size, max_steps, ove
 
     if model == 'cae':
         input_dimensions = [91, 109, 91]
-        layer_outputs, weights, weight_shapes, encode, decode, brain_image, \
-        pheno_data, label, cost, train_op = createAutoEncoderModel(image, output, p_keep_conv, batch_size)
+        layer_outputs, weights, encode, decode, brain_image, \
+        cost, train_op = createAutoEncoderModel(image, output, p_keep_conv, batch_size)
     elif model == 'cnn':
         layer_outputs, weights, cost, train_op = createCNNModel(image, output, p_keep_conv, batch_size)
     elif model == 'nn':
@@ -276,8 +276,9 @@ def run_model(train, model, binary_filelist, run_all, batch_size, max_steps, ove
                 # Saving output of CAE to binary files
                 encoded_image = np.asarray(sess.run(encode))
                 # Get label and phenotype data
-                patient_label = np.asarray(sess.run(label))
-                patient_pheno = np.asarray(sess.run(pheno_data))
+                patient_label = np.asarray(sess.run(output))
+                # patient_pheno = np.asarray(sess.run(pheno_data))
+                patient_pheno = np.asarray(sess.run(data))
                 # ourput image currently: 31x37x31
 
                 bin_path = create_brain_binaries.create_compressed_binary(

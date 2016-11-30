@@ -171,7 +171,7 @@ class CNNLayers(Layers):
             nextLayer = self.relu(nextLayer)
 
 
-        return nextLayer, w_deconv
+        return nextLayer, w_deconv, b
 
     def pool(self, prev_layer, window_size, str_size, poolType = 'max'):
         next_layer = None
