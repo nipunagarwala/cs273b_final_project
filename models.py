@@ -66,7 +66,7 @@ class NeuralNetwork(CNNLayers):
         return cumCost, train_op
 
 
-class AutoEncoder(Layers):
+class AutoEncoder(CNNLayers):
 
     def __init__(self, data, output, p_keep_conv, batch_size=1, learning_rate=1e-3, beta1=0.99, beta2=0.99, rho=0.4, lmbda = 0.6, op='Rmsprop'):
         Layers.__init__(self)
