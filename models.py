@@ -66,6 +66,83 @@ class NeuralNetwork(CNNLayers):
         return cumCost, train_op
 
 
+class AutoEncoder(Layers):
+
+    def __init__(self, data, output, p_keep_conv, batch_size=1, learning_rate=1e-3, beta1=0.99, beta2=0.99, rho=0.4, lmbda = 0.6, op='Rmsprop'):
+        Layers.__init__(self)
+        self.input_data = data
+        self.input_data = tf.reshape(self.input_data, [batch_size,29], name=None)
+
+        self.output = output
+        self.dropout = p_keep_conv
+        
+        self.batch_size = batch_size
+        self.learning_rate = learning_rate
+        self.beta1 = beta1
+        self.beta2 = beta2
+        self.lmbda = lmbda
+        self.rho = rho
+        self.op = op
+
+
+    def build_model(self, hidden_units, relu, batch_norm):
+        weights = {}
+        biases = {}
+        layer_outputs = {}
+        layer_shapes = {}
+        encode = []
+        decode = []
+
+        layer_outputs['input'] = self.input_data
+        layer_outputs['output'] = self.output
+        prev_layer = self.input_data
+
+        unit_sizes = [(prev_layer.get_shape().as_list())[1]]
+        unit_sizes += hidden_units
+
+        for i in range(len(hidden_units)):
+            layer_outputs['layer'+str(i+1)], weights['w'+str(i+1)], biases['w'+str(i+1)] \
+                    = self.fcLayer(prev_layer, unit_sizes[i:i+2], relu[i], batch_norm[i])
+            prev_layer = layer_outputs['layer'+str(i+1)]
+
+        encode.append(prev_layer)
+        self.encode = prev_layer
+
+        print("The encoded data size is: " + str(prev_layer.get_shape().as_list()))
+
+        unit_sizes.reverse()
+        tot = 2*len(hidden_units)
+        for i in range(len(hidden_units), tot):
+            layer_outputs['layer'+str(i+1)], weights['w'+str(i+1)], biases['w'+str(i+1)] \
+                    = self.fcLayer(prev_layer, unit_sizes[i-len(hidden_units):i-len(hidden_units)+2],
+                                   relu[i], batch_norm[i])
+            prev_layer = layer_outputs['layer'+str(i+1)]
+
+        print("The decoded data size is: " + str(prev_layer.get_shape().as_list()))
+
+        decode.append(prev_layer)
+        self.decode = prev_layer
+        self.layer_outputs = layer_outputs
+        self.weights = weights
+        self.biases = biases
+
+        return layer_outputs, weights, layer_shapes, encode, decode, self.input_data, self.output
+
+    def train(self):
+        cost = self.cost_function(self.decode, self.input_data, op='softmax')
+
+        cumCost = cost
+        numEntries = len(self.weights)
+
+        weightVals = self.weights.values()
+        # for i in range(numEntries):
+        #     cumCost = self.add_regularization( cumCost, weightVals[i], self.lmbda[i], self.rho[i], op='kl')
+
+        cumCost = self.add_regularization( cost, self.encode, self.lmbda, self.rho, op='kl')
+        train_op = self.minimization_function(cumCost, self.learning_rate, self.beta1, self.beta2, self.op)
+        return cumCost, train_op
+
+
 
 class ConvAutoEncoder(CNNLayers):
 
