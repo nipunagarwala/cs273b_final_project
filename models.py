@@ -7,7 +7,7 @@ import copy
 
 
 class NeuralNetwork(CNNLayers):
-    def __init__(self, train, data_list, input_dimensions, batch_size=1, learning_rate=1e-3, beta1=0.99, beta2=0.99, lmbda=None, op='Rmsprop'):
+    def __init__(self, train, data_list, input_dimensions, batch_size=1, learning_rate=1e-3, beta1=0.99, beta2=0.99, w_lmbda=None, b_lmbda = None , op='Rmsprop'):
         CNNLayers.__init__(self)
         self.input_image, self.input_data, self.output, self.p_keep = self.createVariables(train, data_list, batch_size, input_dimensions)
         self.input_data = tf.reshape(self.input_data, [batch_size,29 ], name=None)
@@ -17,12 +17,14 @@ class NeuralNetwork(CNNLayers):
         self.learning_rate = learning_rate
         self.beta1 = beta1
         self.beta2 = beta2
-        self.lmbda = lmbda
+        self.w_lmbda = w_lmbda
+        self.b_lmbda = b_lmbda
         self.op = op
 
     def build_model(self, num_layers, hidden_units, sigmoid=True,batch_norm=True, in_multiModal=True):
         weights = {}
         layersOut = {}
+        biases = {}
 
         layersOut['input'] = self.input_data
         layersOut['output'] = self.output
@@ -30,7 +32,7 @@ class NeuralNetwork(CNNLayers):
 
         prev_shape = (prev_layer.get_shape().as_list())[1]
         for i in range(num_layers):
-            layersOut['layer'+str(i+1)] ,weights['w'+str(i+1)] = self.fcLayer(prev_layer, [prev_shape, hidden_units[i]], sigmoid, batch_norm)
+            layersOut['layer'+str(i+1)] ,weights['w'+str(i+1)], biases['w'+str(i+1)] = self.fcLayer(prev_layer, [prev_shape, hidden_units[i]], sigmoid, batch_norm)
             prev_shape = hidden_units[i]
             prev_layer = layersOut['layer'+str(i+1)]
 
@@ -42,17 +44,21 @@ class NeuralNetwork(CNNLayers):
 
         self.layersOut = layersOut
         self.weights = weights
+        self.biases = biases
 
         return layersOut, weights
 
-    def train(self):
+    def train(self, nn_reg_on, nn_reg_op):
         cost = self.cost_function(self.layersOut['pred'], self.output, op='softmax')
         cumCost = cost
         numEntries = len(self.weights)
 
-        weightVals = self.weights.values()
-        for i in range(numEntries):
-            cumCost = self.add_regularization( cumCost, weightVals[i], self.lmbda[i], None, op='l2')
+        if nn_reg_on:
+            weightVals = self.weights.values()
+            biasVals = self.biases.values()
+            for i in range(numEntries):
+                cumCost = self.add_regularization( cumCost, weightVals[i], self.w_lmbda [i], None, op= nn_reg_op)
+                cumCost = self.add_regularization( cumCost, biasVals[i], self.b_lmbda [i], None, op= nn_reg_op)
 
         train_op = self.minimization_function(cumCost, self.learning_rate, self.beta1, self.beta2, self.op)
         return cumCost, train_op
@@ -128,14 +134,15 @@ class ConvAutoEncoder(CNNLayers):
 
 
 class ConvNN(CNNLayers):
-    def __init__(self, train, data_list, input_dimensions, num_layers, batch_size=1, learning_rate=1e-3, beta1=0.99, beta2=0.99, lmbda = None, op='Rmsprop'):
+    def __init__(self, train, data_list, input_dimensions, num_layers, batch_size=1, learning_rate=1e-3, beta1=0.99, beta2=0.99, w_lmbda = None,b_lmbda = None, op='Rmsprop'):
         CNNLayers.__init__(self)
         self.input_image, self.input_data, self.output, self.p_keep = self.createVariables(train, data_list, batch_size, input_dimensions)
         self.batch_size = batch_size
         self.learning_rate = learning_rate
         self.beta1 = beta1
         self.beta2 = beta2
-        self.lmbda = lmbda
+        self.b_lmbda = b_lmbda
+        self.w_lmbda = w_lmbda
         self.op = op
         self.output = tf.reshape(self.output, [1,self.batch_size], name=None)
 
@@ -267,28 +274,30 @@ class ConvNN(CNNLayers):
         return layersOut, weights
 
 
-    def train(self):
+    def train(self, cnn_reg_on, cnn_reg_op):
         cost = self.cost_function( self.layersOut['pred'], self.output, op='sigmoid')
         cumCost = cost
         numEntries = len(self.weights)
 
-        weightVals = self.weights.values()
-        biasVals = self.biases.values()
-        for i in range(numEntries):
-            cumCost = self.add_regularization( cumCost, weightVals[i], self.lmbda[i], None, op='l2')
-            cumCost = self.add_regularization( cumCost, biasVals[i], self.lmbda[i], None, op='l2')
+        if cnn_reg_on:
+            weightVals = self.weights.values()
+            biasVals = self.biases.values()
+            for i in range(numEntries):
+                cumCost = self.add_regularization( cumCost, weightVals[i], self.w_lmbda[i], None, op=cnn_reg_op)
+                cumCost = self.add_regularization( cumCost, biasVals[i], self.b_lmbda[i], None, op=cnn_reg_op)
 
         train_op = self.minimization_function(cumCost, self.learning_rate, self.beta1, self.beta2, self.op)
         return cumCost, train_op
 
 class MultiModalNN(CNNLayers):
-    def __init__(self, train, data_list,cnn_out, fcnet_out, output, batch_size=1,  learning_rate=1e-3, beta1=0.99, beta2=0.99, lmbda = None,op='Rmsprop' ):
+    def __init__(self, train, data_list,cnn_out, fcnet_out, output, batch_size=1,  learning_rate=1e-3, beta1=0.99, beta2=0.99, w_lmbda = None, b_lmbda = None, op='Rmsprop' ):
         CNNLayers.__init__(self)
 
         self.cnn_out = cnn_out
         self.fcnet_out = fcnet_out
         self.output = output
-        self.lmbda = lmbda
+        self.w_lmbda = w_lmbda
+        self.b_lmbda = b_lmbda
         self.batch_size = batch_size
         self.learning_rate = learning_rate
         self.beta1 = beta1
@@ -318,7 +327,7 @@ class MultiModalNN(CNNLayers):
             prev_shape = hidden_units[i]
             prev_layer = layersOut['layer'+str(i+1)]
 
-        layersOut['pred'] = self.sigmoid(rev_layer)
+        layersOut['pred'] = self.sigmoid(prev_layer)
         layersOut['pred'] = tf.reshape(layersOut['pred'], [1,self.batch_size], name=None)
 
         self.layersOut = layersOut
@@ -335,8 +344,8 @@ class MultiModalNN(CNNLayers):
         weightVals = self.weights.values() 
         biasVals = self.biases.values()
         for i in range(numEntries-2):
-            cumCost = self.add_regularization( cumCost, weightVals[i], self.lmbda[i], None, op='l2')
-            cumCost = self.add_regularization( cumCost, biasVals[i], self.lmbda[i], None, op='l2')
+            cumCost = self.add_regularization( cumCost, weightVals[i], self.w_lmbda[i], None, op='l2')
+            cumCost = self.add_regularization( cumCost, biasVals[i], self.b_lmbda[i], None, op='l2')
 
         train_op = self.minimization_function(cumCost, self.learning_rate, self.beta1, self.beta2, self.op)
         return cumCost, train_op

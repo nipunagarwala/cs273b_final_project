@@ -46,7 +46,8 @@ MMNN_LEARNING_RATE = 0.001
 # apply batch norm or not
 MMNN_BATCH_NORM = True
 MMNN_HIDDEN_UNITS = [32, 64, 32, 1]
-MMNN_REG_CONSTANTS = [0.6] * len(MMNN_HIDDEN_UNITS)
+MMNN_REG_CONSTANTS_WEIGHTS = [0.6] * len(MMNN_HIDDEN_UNITS)
+MMNN_REG_CONSTANTS_BIAS = [0.6] * len(MMNN_HIDDEN_UNITS)
 
 # options for the optimizers: 'Rmsprop' 'adam' 'adagrad'
 MMNN_OP = 'Rmsprop'
@@ -74,9 +75,10 @@ CNN_NUM_LAYERS = len(CONV_ARCH)
 
 CNN_NUM_FC_LAYERS = 3
 
-CNN_MMLAYER = 10
+CNN_MMLAYER = CONV_ARCH.index("reshape") + 1
 
-CNN_REG_CONSTANTS = [0.9]*CNN_NUM_LAYERS 
+CNN_REG_CONSTANTS_WEIGHTS = [0.9]*CNN_NUM_LAYERS 
+CNN_REG_CONSTANTS_BIAS = [0.9]*CNN_NUM_LAYERS 
 
 CNN_FILTER_SZ = [5, 5, None, 3, 3, None, 3, 3, None, 3, 3, None, 3, 3, None, None, None, None, None]
 CNN_NUM_FILTERS = [16, 32, None, 32, 32, None,32, 32, None,32, 32, None, 16, 1, None, None, None, None, None]
@@ -84,6 +86,14 @@ CNN_STRIDE_SZ = [1, 1, None, 1, 1, None, 1, 1, None,1, 1, None,1, 1, None, None,
 CNN_POOL_SZ = [None, None, 3,None, None, 3,None, None, 3, None, None, 3, None, None, 3, None, None, None, None]
 CNN_POOL_STRIDE_SZ = [None, None, 1,None, None, 1,None, None, 2, None, None, 2, None, None, 1, None, None, None, None]
 
+# The optimizer for Regularization
+# Options: 'l2' 'l1' 'kl'
+# If using 'kl', kindly specify CNN_RHO too
+
+CNN_REG_ON = True
+CNN_REG_OP = 'l2'
+
+CNN_RHO = 0.7
 
 # Learning rate for backpropogation
 CNN_LEARNING_RATE = 0.0001
@@ -113,9 +123,12 @@ NN_HIDDEN_UNITS = [32, 64, 64, 32, 1]
 # Layer to be fed into Multi-Modal NN
 NN_MMLAYER = 4
 
-NN_REG_CONSTANTS = [0.6]*len(NN_HIDDEN_UNITS)
+NN_REG_CONSTANTS_WEIGHTS = [0.6]*len(NN_HIDDEN_UNITS)
+NN_REG_CONSTANTS_BIAS = [0.9]*CNN_NUM_LAYERS
 
 NN_LEARNING_RATE = 0.01
+NN_REG_ON = True
+NN_REG_OP = 'l2'
 
 # apply batch norm or not
 NN_BATCH_NORM = True
