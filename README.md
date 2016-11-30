@@ -24,6 +24,13 @@ python run.py --model cae
 
 **Note:** Only run the "full pass" option with on Convolutional Autoencoder. There should be functionality preventing this, but just a heads up.
 
+### Autoencoder
+
+```
+python run.py --train --model ae
+python run.py --test --model ae
+```
+
 ### Convolutional Neural Network
 
 ```
