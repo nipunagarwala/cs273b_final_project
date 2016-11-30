@@ -147,7 +147,7 @@ class CNNLayers(Layers):
             nextLayer = self.relu(nextLayer)
 
 
-        return nextLayer, w_conv, b
+        return nextLayer, w_conv
 
 
     def deconv_layer(self, prev_layer_out, filter_shape, out_shape, layer_stride, w_name, num_dim = '2d',padding='SAME', if_relu = True, batchNorm = True):
