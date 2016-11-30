@@ -37,7 +37,17 @@ tf.app.flags.DEFINE_boolean('test', True, """Testing the model """)
 tf.app.flags.DEFINE_boolean('cae', True, """Run the Convolutional AutoEncoder """)
 
 
-def createAutoEncoderModel(train, data_list, input_dimensions, batch_size):
+
+def createVariables(train, binary_filelist, input_dimensions, batch_size):
+    # train: Boolean
+    # data_list: Path of a file containing a list of all binary data file paths
+    # batch_size: int
+    p_keep_conv = tf.placeholder("float")
+    X_image, X_data, Y = inputs(train, binary_filelist, batch_size, input_dimensions)
+    return X_image, X_data, Y, p_keep_conv
+
+
+def createAutoEncoderModel(image, output, p_keep_conv,batch_size):
 
     # hyperparameters
     filter_sz = CAE_FILTER_SZ
@@ -68,7 +78,7 @@ def createAutoEncoderModel(train, data_list, input_dimensions, batch_size):
     #rhoVec = [0.1]*numForwardLayers*2
 
     print("Creating the Convolutional AutoEncoder Object")
-    cae = ConvAutoEncoder(train, data_list, input_dimensions, batch_size,
+    cae = ConvAutoEncoder(image, output, p_keep_conv,
                     learning_rate, beta1, beta2, rho=rho, lmbda=lmbda, op=op)
 
     allNames = ["layer1_filters","layer2_filters","layer3_filters","layer4_filters","layer5_filters","layer6_filters",
@@ -95,13 +105,13 @@ def createAutoEncoderModel(train, data_list, input_dimensions, batch_size):
                         brain_image, pheno_data, label, cost, train_op
 
 
-def createCNNModel(train, data_list, input_dimensions, batch_size, multiModal=False):
+def createCNNModel(image, output, p_keep_conv,batch_size, multiModal=False):
 
     numLayers = 8
     regConstants = [0.6]*numLayers
     print("Creating the Convolutional Neural Network Object")
 
-    deepCnn = ConvNN(train, data_list, input_dimensions, numLayers, batch_size,
+    deepCnn = ConvNN(image, output, p_keep_conv, numLayers, batch_size,
                         CNN_LEARNING_RATE, CNN_BETA_1, CNN_BETA_2, w_lmbda = CNN_REG_CONSTANTS_WEIGHTS, 
                             b_lmbda = CNN_REG_CONSTANTS_BIAS , op=CNN_OP)
     print("Building the Deep CNN Model")
@@ -121,7 +131,7 @@ def createCNNModel(train, data_list, input_dimensions, batch_size, multiModal=Fa
     return layersOut, weights, cost, train_op
 
 
-def createVanillaNN(train, data_list, input_dimensions, batch_size, multiModal=False, image=None, data=None, label=None):
+def createVanillaNN(data, output, p_keep_conv,batch_size, multiModal=False):
 
     learning_rate = NN_LEARNING_RATE
     beta1 = NN_BETA_1
@@ -135,7 +145,7 @@ def createVanillaNN(train, data_list, input_dimensions, batch_size, multiModal=F
 
     print("Creating the Vannil Neural Network Object")
 
-    deepNN = NeuralNetwork(train, data_list, input_dimensions, batch_size,
+    deepNN = NeuralNetwork(data, output, p_keep_conv, batch_size,
                             learning_rate, beta1, beta2, w_lmbda=regConstants, b_lmbda = NN_REG_CONSTANTS_BIAS, op=op)
                             # image=image, data=data, label=label)
 
@@ -153,13 +163,13 @@ def createVanillaNN(train, data_list, input_dimensions, batch_size, multiModal=F
     return layersOut, weights, cost, train_op
 
 
-def createMultiModalNN(train, binary_filelist, input_dimensions, batch_size):
+def createMultiModalNN(image, data, output, p_keep_conv, batch_size):
 
     # layersCnn, weightsCnn, image, data, label = createCNNModel(train, binary_filelist, input_dimensions, batch_size, True)
-    layersCnn, weightsCnnl = createCNNModel(train, binary_filelist, input_dimensions, batch_size, True)
+    layersCnn, weightsCnnl = createCNNModel(image, output, p_keep_conv,batch_size, True)
 
     # layersFc, weightsFc = createVanillaNN(train, binary_filelist, input_dimensions, batch_size, True, image, data, label)
-    layersFc, weightsFc = createVanillaNN(train, binary_filelist, input_dimensions, batch_size, True)
+    layersFc, weightsFc = createVanillaNN(data, output, p_keep_conv,batch_size,  True)
 
     learning_rate = MMNN_LEARNING_RATE 
     beta1 = MMNN_BETA_1 
@@ -173,7 +183,7 @@ def createMultiModalNN(train, binary_filelist, input_dimensions, batch_size):
 
     print("Creating the Multi Modal Convolutional Neural Network Object")
 
-    deepMultiNN = MultiModalNN(train, binary_filelist, layersCnn['layer'+str(CNN_MMLAYER)+'-fc'],layersFc['layer'+str(NN_MMLAYER)], layersCnn['output'], batch_size,
+    deepMultiNN = MultiModalNN( layersCnn['layer'+str(CNN_MMLAYER)+'-fc'],layersFc['layer'+str(NN_MMLAYER)], layersCnn['output'], batch_size,
                 learning_rate, beta1, beta2, w_lmbda = regConstants, b_lmbda = MMNN_REG_CONSTANTS_BIAS, op=MMNN_OP)
 
 
@@ -189,20 +199,19 @@ def createMultiModalNN(train, binary_filelist, input_dimensions, batch_size):
 
 def run_model(train, model, binary_filelist, run_all, batch_size, max_steps, overrideChkpt):
     input_dimensions = [31, 37, 31]
+
+    image, data, output, p_keep_conv = createVariables(train, binary_filelist, input_dimensions, batch_size)
+
     if model == 'cae':
         input_dimensions = [91, 109, 91]
         layer_outputs, weights, weight_shapes, encode, decode, brain_image, \
-        pheno_data, label, cost, train_op = createAutoEncoderModel(train,
-                                binary_filelist, input_dimensions, batch_size)
+        pheno_data, label, cost, train_op = createAutoEncoderModel(image, output, p_keep_conv, batch_size)
     elif model == 'cnn':
-        layer_outputs, weights, cost, train_op = createCNNModel(train,
-                                binary_filelist, input_dimensions, batch_size)
+        layer_outputs, weights, cost, train_op = createCNNModel(image, output, p_keep_conv, batch_size)
     elif model == 'nn':
-        layer_outputs, weights, cost, train_op = createVanillaNN(train,
-                                binary_filelist, input_dimensions, batch_size)
+        layer_outputs, weights, cost, train_op = createVanillaNN(data, output, p_keep_conv, batch_size)
     elif model == 'mmnn':
-        layer_outputs, weights, cost, train_op = createMultiModalNN(train,
-                                binary_filelist, input_dimensions, batch_size)
+        layer_outputs, weights, cost, train_op = createMultiModalNN(image, data, output, p_keep_conv, batch_size)
     else:
         print("Kindly put in the correct model")
 

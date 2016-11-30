@@ -18,14 +18,6 @@ class Layers(object):
     def init_weights(self, shape):
         return tf.Variable(tf.random_normal(shape, stddev=self.stdDev))
 
-    def createVariables(self, train, data_list, batch_size, dimensions):
-        # train: Boolean
-        # data_list: Path of a file containing a list of all binary data file paths
-        # batch_size: int
-        p_keep_conv = tf.placeholder("float")
-        X_image, X_data, Y = inputs(train, data_list, batch_size, dimensions)
-        return X_image, X_data, Y, p_keep_conv
-
 
     def dropout(self, prev_layer,  p_keep):
         next_layer = tf.nn.dropout(prev_layer, p_keep)

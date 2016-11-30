@@ -7,11 +7,13 @@ import copy
 
 
 class NeuralNetwork(CNNLayers):
-    def __init__(self, train, data_list, input_dimensions, batch_size=1, learning_rate=1e-3, beta1=0.99, beta2=0.99, w_lmbda=None, b_lmbda = None , op='Rmsprop'):
+    def __init__(self, data, output, p_keep_conv, batch_size=1, learning_rate=1e-3, beta1=0.99, beta2=0.99, w_lmbda=None, b_lmbda = None , op='Rmsprop'):
         CNNLayers.__init__(self)
-        self.input_image, self.input_data, self.output, self.p_keep = self.createVariables(train, data_list, batch_size, input_dimensions)
+        self.input_data = data
         self.input_data = tf.reshape(self.input_data, [batch_size,29 ], name=None)
 
+        self.output = output
+        self.dropout = p_keep_conv
         self.output = tf.reshape(self.output, [batch_size,1 ], name=None)
         self.batch_size = batch_size
         self.learning_rate = learning_rate
@@ -67,9 +69,11 @@ class NeuralNetwork(CNNLayers):
 
 class ConvAutoEncoder(CNNLayers):
 
-    def __init__(self, train, data_list, input_dimensions, batch_size=1, learning_rate=1e-3, beta1=0.99, beta2=0.99, rho=0.4, lmbda = 0.6, op='Rmsprop'):
+    def __init__(self, image, output, p_keep_conv, batch_size=1, learning_rate=1e-3, beta1=0.99, beta2=0.99, rho=0.4, lmbda = 0.6, op='Rmsprop'):
         CNNLayers.__init__(self)
-        self.input_image, self.input_data, self.output, self.p_keep = self.createVariables(train, data_list, batch_size, input_dimensions)
+        self.input_image = image
+        self.output = output
+        self.dropout = p_keep_conv
         
         self.batch_size = batch_size
         self.learning_rate = learning_rate
@@ -134,9 +138,11 @@ class ConvAutoEncoder(CNNLayers):
 
 
 class ConvNN(CNNLayers):
-    def __init__(self, train, data_list, input_dimensions, num_layers, batch_size=1, learning_rate=1e-3, beta1=0.99, beta2=0.99, w_lmbda = None,b_lmbda = None, op='Rmsprop'):
+    def __init__(self, image, output, p_keep_conv, num_layers, batch_size=1, learning_rate=1e-3, beta1=0.99, beta2=0.99, w_lmbda = None,b_lmbda = None, op='Rmsprop'):
         CNNLayers.__init__(self)
-        self.input_image, self.input_data, self.output, self.p_keep = self.createVariables(train, data_list, batch_size, input_dimensions)
+        self.input_image = image
+        self.output = output
+        self.dropout = p_keep_conv
         self.batch_size = batch_size
         self.learning_rate = learning_rate
         self.beta1 = beta1
@@ -290,7 +296,7 @@ class ConvNN(CNNLayers):
         return cumCost, train_op
 
 class MultiModalNN(CNNLayers):
-    def __init__(self, train, data_list,cnn_out, fcnet_out, output, batch_size=1,  learning_rate=1e-3, beta1=0.99, beta2=0.99, w_lmbda = None, b_lmbda = None, op='Rmsprop' ):
+    def __init__(self,cnn_out, fcnet_out, output, batch_size=1,  learning_rate=1e-3, beta1=0.99, beta2=0.99, w_lmbda = None, b_lmbda = None, op='Rmsprop' ):
         CNNLayers.__init__(self)
 
         self.cnn_out = cnn_out
@@ -349,8 +355,6 @@ class MultiModalNN(CNNLayers):
 
         train_op = self.minimization_function(cumCost, self.learning_rate, self.beta1, self.beta2, self.op)
         return cumCost, train_op
-
-
 
 
 
