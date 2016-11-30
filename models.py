@@ -358,17 +358,41 @@ class MultiModalNN(CNNLayers):
 
 
 
-# class ResCNN(CNNLayers):
-#     def __init__(self, train, data_list, input_dimensions, batch_size=1, learning_rate=1e-3, beta1=0.99, beta2=0.99, rho=0.4, lmbda = 0.6, op='Rmsprop'):
+# class ResidualNet(CNNLayers):
+#     def __init__(self, image, output, p_keep_conv, batch_size=1, learning_rate=1e-3, beta1=0.99, beta2=0.99, w_lmbda = None, b_lmbda = None, op='Rmsprop'):
 #         CNNLayers.__init__(self)
-#         self.input_image, self.input_data, self.output, self.p_keep = self.createVariables(train, data_list, batch_size, input_dimensions)
+#         self.input_image = image
+#         self.output = output
+#         self.dropout = p_keep_conv
 #         self.batch_size = batch_size
 #         self.learning_rate = learning_rate
 #         self.beta1 = beta1
 #         self.beta2 = beta2
-#         self.rho = rho
-#         self.lmbda = lmbda
+#         self.w_lmbda = w_lmbda
+#         self.b_lmbda = b_lmbda
 #         self.op = op
 
 
 #     def build_model(self):
+#         weights = {}
+#         layersOut = {}
+#         biases = {}
+
+#         layersOut['input'] = self.input_image
+#         layersOut['output'] = self.output
+
+#         prev_layer = self.input_image
+
+#         prev_layer_fltr = 1
+#         layer_counter = 0
+#         num_fc_done = 0
+        
+
+
+
+
+
+
+
+
+

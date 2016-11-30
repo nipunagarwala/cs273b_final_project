@@ -192,6 +192,23 @@ class CNNLayers(Layers):
         return tf.maximum(x, leak*x)
 
 
-    def residual_unit(self, input_layer, output_layer):
-        res = input_layer + output_layer
-        return res
+    def residual_unit(self, prev_layer_out, layer_count, weight_dict, bias_dict, w_shape, layer_stride, num_dim = '2d',
+                            padding='SAME', if_relu = True, batchNorm = True):
+
+        input_layer = prev_layer_out
+        numFilters = w_shape[len(w_shape)-1]
+
+        wName = 'layer'+str(layer_count+1)
+        nextLayer, weight_dict[wName], bias_dict[wName] = self.conv_layer(input_layer, w_shape, layer_stride, wName, num_dim, 
+                                                            padding,if_relu = if_relu, batchNorm = batch_norm)
+
+        nextW_shape = w_shape
+        nextW_shape[3] = numFilters
+        nextW_name = 'layer'+str(layer_count+2)
+
+        nextLayer, weight_dict[nextW_name], bias_dict[nextW_name] = self.conv_layer(nextLayer, nextW_shape, layer_stride, nextW_name, 
+                                                num_dim, padding,if_relu = if_relu, batchNorm = batch_norm)
+
+
+        output_layer = input_layer + nextLayer
+        return output_layer, (layer_count+2)
