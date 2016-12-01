@@ -14,13 +14,6 @@ FLAGS = tf.app.flags.FLAGS
 tf.app.flags.DEFINE_string('train_dir', '/data/train',
                            """Directory where to write event logs """)
 
-tf.app.flags.DEFINE_string('ae_train_binaries', '/data/reduced_train.json',
-                           """File containing list of binary filenames used for training """)
-tf.app.flags.DEFINE_string('ae_test_binaries', '/data/reduced_test.json',
-                           """File containing list of binary filenames used for testing """)
-tf.app.flags.DEFINE_string('ae_all_binaries', '/data/reduced_all.json',
-                           """File containing list of all the binary filenames """)
-
 tf.app.flags.DEFINE_string('train_binaries', '/data/train.json',
                            """File containing list of binary filenames used for training """)
 tf.app.flags.DEFINE_string('test_binaries', '/data/test.json',
@@ -28,7 +21,7 @@ tf.app.flags.DEFINE_string('test_binaries', '/data/test.json',
 tf.app.flags.DEFINE_string('all_binaries', '/data/all.json',
                            """File containing list of all the binary filenames """)
 
-# Convolutional Auto Encoder compressed files
+# Auto Encoder compressed files
 tf.app.flags.DEFINE_string('reduced_dir', '/data/binaries_reduced',
                            """File containing list of all the binary filenames """)
 tf.app.flags.DEFINE_string('reduced_train_binaries', '/data/reduced_train.json',
@@ -42,7 +35,6 @@ tf.app.flags.DEFINE_string('reduced_all_binaries', '/data/reduced_all.json',
 tf.app.flags.DEFINE_boolean('train', True, """Training the model """)
 tf.app.flags.DEFINE_boolean('test', True, """Testing the model """)
 tf.app.flags.DEFINE_boolean('cae', True, """Run the Convolutional AutoEncoder """)
-tf.app.flags.DEFINE_boolean('ae', True, """Run the AutoEncoder """)
 
 
 
@@ -55,49 +47,7 @@ def createVariables(train, binary_filelist, input_dimensions, batch_size):
     return X_image, X_data, Y, p_keep_conv
 
 
-def createAutoEncoderModel(data, output, p_keep_conv, batch_size):
-
-    # hyperparameters
-    learning_rate = AE_LEARNING_RATE
-    beta1 = AE_BETA_1
-    beta2 = AE_BETA_2 
-    rho = AE_RHO
-    lmbda = AE_LAMBDA
-    op = AE_OP
-    batchOn = AE_BATCH_NORM
-
-    hidden_units = AE_HIDDEN_UNITS
-
-    numForwardLayers = len(hidden_units)
-    #lmbVec = [0.4]*numForwardLayers*2
-    #rhoVec = [0.1]*numForwardLayers*2
-
-    print("Creating the AutoEncoder Object")
-    ae = AutoEncoder(data, output, p_keep_conv, batch_size, 
-                     learning_rate, beta1, beta2, rho=rho, lmbda=lmbda, op=op)
-
-    allRelu = [True]*numForwardLayers*2
-    allBatch = [batchOn]*numForwardLayers*2
-
-    # We do not need ReLUs in the encoder layer and the decode layer
-    # DO NOT CHANGE UNLESS NECESSARY
-    allRelu[numForwardLayers-1] = False
-    allRelu[2*numForwardLayers-1] = False
-    allBatch[numForwardLayers-1] = False
-    allBatch[2*numForwardLayers-1] = False
-
-    print("Building the Autoencoder Model")
-    layer_outputs, weights, weight_shapes, encode, decode, pheno_data, label \
-                = ae.build_model(hidden_units, allRelu, allBatch)
-
-    print("Setting up the Training model of the Autoencoder")
-    cost, train_op = ae.train()
-    
-    return layer_outputs, weights, weight_shapes, encode, decode, \
-                        pheno_data, label, cost, train_op
-
-
-def createConvAutoEncoderModel(image, output, p_keep_conv, batch_size):
+def createAutoEncoderModel(image, output, p_keep_conv,batch_size):
 
     # hyperparameters
     filter_sz = CAE_FILTER_SZ
@@ -128,8 +78,8 @@ def createConvAutoEncoderModel(image, output, p_keep_conv, batch_size):
     #rhoVec = [0.1]*numForwardLayers*2
 
     print("Creating the Convolutional AutoEncoder Object")
-    cae = ConvAutoEncoder(image, output, p_keep_conv,
-                          learning_rate, beta1, beta2, rho=rho, lmbda=lmbda, op=op)
+    cae = ConvAutoEncoder(image, output, p_keep_conv,batch_size,
+                    learning_rate, beta1, beta2, rho=rho, lmbda=lmbda, op=op)
 
     allNames = ["layer1_filters","layer2_filters","layer3_filters","layer4_filters","layer5_filters","layer6_filters",
                 "layer7_filters","layer8_filters","layer9_filters","layer10_filters"]
@@ -144,18 +94,18 @@ def createConvAutoEncoderModel(image, output, p_keep_conv, batch_size):
     allBatch[2*numForwardLayers-1] = False
 
     print("Building the Convolutional Autoencoder Model")
-    layer_outputs, weights, weight_shapes, encode, \
-    decode, brain_image, pheno_data, label = cae.build_model(numForwardLayers,
+    layer_outputs, weights, encode, \
+    decode, brain_image = cae.build_model(numForwardLayers,
                             allFilters, allStrides, allNames, allRelu, allBatch)
 
 
-    print("Setting up the Training model of the Convolutional Autoencoder")
+    print("Setting up the Training model of the Autoencoder")
     cost, train_op = cae.train()
-    return layer_outputs, weights, weight_shapes, encode, decode, \
-                        brain_image, pheno_data, label, cost, train_op
+    return layer_outputs, weights, encode, decode, \
+                        brain_image, cost, train_op
 
 
-def createCNNModel(image, output, p_keep_conv, batch_size, multiModal=False):
+def createCNNModel(image, output, p_keep_conv,batch_size, multiModal=False):
 
     numLayers = 8
     regConstants = [0.6]*numLayers
@@ -252,13 +202,10 @@ def run_model(train, model, binary_filelist, run_all, batch_size, max_steps, ove
 
     image, data, output, p_keep_conv = createVariables(train, binary_filelist, input_dimensions, batch_size)
 
-    if model == 'ae':
-        layer_outputs, weights, weight_shapes, encode, decode, \
-        pheno_data, label, cost, train_op = createAutoEncoderModel(data, output, p_keep_conv, batch_size)
-    elif model == 'cae':
+    if model == 'cae':
         input_dimensions = [91, 109, 91]
-        layer_outputs, weights, weight_shapes, encode, decode, brain_image, \
-        pheno_data, label, cost, train_op = createConvAutoEncoderModel(image, output, p_keep_conv, batch_size)
+        layer_outputs, weights, encode, decode, brain_image, \
+        cost, train_op = createAutoEncoderModel(image, output, p_keep_conv, batch_size)
     elif model == 'cnn':
         layer_outputs, weights, cost, train_op = createCNNModel(image, output, p_keep_conv, batch_size)
     elif model == 'nn':
@@ -329,9 +276,10 @@ def run_model(train, model, binary_filelist, run_all, batch_size, max_steps, ove
                 # Saving output of CAE to binary files
                 encoded_image = np.asarray(sess.run(encode))
                 # Get label and phenotype data
-                patient_label = np.asarray(sess.run(label))
-                patient_pheno = np.asarray(sess.run(pheno_data))
-                # output image currently: 31x37x31
+                patient_label = np.asarray(sess.run(output))
+                # patient_pheno = np.asarray(sess.run(pheno_data))
+                patient_pheno = np.asarray(sess.run(data))
+                # ourput image currently: 31x37x31
 
                 bin_path = create_brain_binaries.create_compressed_binary(
                                         patient_pheno, encoded_image,
@@ -342,10 +290,8 @@ def run_model(train, model, binary_filelist, run_all, batch_size, max_steps, ove
         coord.join(stop_grace_period_secs=10)
 
 
-        # Visualization of the autoencoder outputs
-        if model == 'ae':
-            pass
-        elif model == 'cae':
+        # Visualization of CAE output
+        if model == 'cae':
             # If running all files for CAE
             if not train and run_all:
                 create_brain_binaries.save_and_split(compressed_filelist,
@@ -370,7 +316,7 @@ def main(_):
     data_group = parser.add_mutually_exclusive_group()
     data_group.add_argument('--train', action="store_true", help='Training the model')
     data_group.add_argument('--test', action="store_true", help='Testing the model')
-    network_group.add_argument('--model', choices=['ae', 'cae', 'cnn', 'nn', 'mmnn'],
+    network_group.add_argument('--model', choices=['cae', 'cnn', 'nn', 'mmnn'],
                         default='mmnn', help='Select model to run.')
     parser.add_argument('--chkPointDir', dest='chkPt', default='/data/ckpt',
                         help='Directory to save the checkpoints. Default is /data/ckpt')
@@ -387,26 +333,20 @@ def main(_):
     run_all = False
 
     if args.train:  # We have 963 train patients
-        if args.model == 'ae':
-            binary_filelist = FLAGS.ae_train_binaries
-        elif args.model == 'cae':
+        if args.model == 'cae':
             binary_filelist = FLAGS.train_binaries
         else:
             binary_filelist = FLAGS.reduced_train_binaries
         # batch_size = 32
         max_steps = args.numIters
     elif args.test: # We have 108 train patients
-        if args.model == 'ae':
-            binary_filelist = FLAGS.ae_test_binaries
         if args.model == 'cae':
             binary_filelist = FLAGS.test_binaries
         else:
             binary_filelist = FLAGS.reduced_test_binaries
         max_steps = 108
     else:
-        if args.model == 'ae':
-            binary_filelist = FLAGS.ae_all_binaries
-        elif args.model == 'cae':
+        if args.model == 'cae':
             binary_filelist = FLAGS.all_binaries
         else:
             binary_filelist = FLAGS.reduced_all_binaries

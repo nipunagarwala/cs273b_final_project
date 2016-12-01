@@ -66,7 +66,7 @@ class NeuralNetwork(CNNLayers):
         return cumCost, train_op
 
 
-class AutoEncoder(Layers):
+class AutoEncoder(CNNLayers):
 
     def __init__(self, data, output, p_keep_conv, batch_size=1, learning_rate=1e-3, beta1=0.99, beta2=0.99, rho=0.4, lmbda = 0.6, op='Rmsprop'):
         Layers.__init__(self)
@@ -163,6 +163,7 @@ class ConvAutoEncoder(CNNLayers):
 
     def build_model(self, num_layers_encode, filters, strides, names, relu, batch_norm):
         weights = {}
+        biases = {}
         layer_outputs = {}
         layer_shapes = {}
         encode = []
@@ -174,7 +175,7 @@ class ConvAutoEncoder(CNNLayers):
         layer_shapes['w0'] =  self.input_image.get_shape().as_list()
 
         for i in range(num_layers_encode):
-            layer_outputs['layer'+str(i+1)] ,weights['w'+str(i+1)] = self.conv_layer( prev_layer, filters[i], strides[i], names[i], '3d', 'SAME', relu[i], batch_norm[i])
+            layer_outputs['layer'+str(i+1)] ,weights['w'+str(i+1)], biases['b'+str(i+1)] = self.conv_layer( prev_layer, filters[i], strides[i], names[i], '3d', 'SAME', relu[i], batch_norm[i])
             prev_layer = layer_outputs['layer'+str(i+1)]
             layer_shapes['w'+str(i+1)] = prev_layer.get_shape().as_list()
 
@@ -186,7 +187,7 @@ class ConvAutoEncoder(CNNLayers):
         tot = 2*num_layers_encode #4 layers
         for i in range(num_layers_encode, tot):
             print(filters[tot-i-1])
-            layer_outputs['layer'+str(i+1)] ,weights['w'+str(i+1)] = self.deconv_layer(prev_layer,filters[tot-i-1], layer_shapes['w'+str(tot-i-1)], strides[tot-i-1], names[i], '3d', 'SAME', relu[i], batch_norm[i])
+            layer_outputs['layer'+str(i+1)] ,weights['w'+str(i+1)],biases['b'+str(i+1)] = self.deconv_layer(prev_layer,filters[tot-i-1], layer_shapes['w'+str(tot-i-1)], strides[tot-i-1], names[i], '3d', 'SAME', relu[i], batch_norm[i])
             prev_layer = layer_outputs['layer'+str(i+1)]
             layer_shapes['w'+str(i+1)] = prev_layer.get_shape().as_list()
 
@@ -197,7 +198,7 @@ class ConvAutoEncoder(CNNLayers):
         self.layer_outputs = layer_outputs
         self.weights = weights
 
-        return layer_outputs, weights, layer_shapes, encode, decode, self.input_image, self.input_data, self.output
+        return layer_outputs, weights, encode, decode, self.input_image
 
     def train(self):
         cost = self.cost_function(self.decode, self.input_image, op='softmax')
@@ -434,18 +435,32 @@ class MultiModalNN(CNNLayers):
         return cumCost, train_op
 
 
-
-# class ResCNN(CNNLayers):
-#     def __init__(self, train, data_list, input_dimensions, batch_size=1, learning_rate=1e-3, beta1=0.99, beta2=0.99, rho=0.4, lmbda = 0.6, op='Rmsprop'):
+# class ResidualNet(CNNLayers):
+#     def __init__(self, image, output, p_keep_conv, batch_size=1, learning_rate=1e-3, beta1=0.99, beta2=0.99, w_lmbda = None, b_lmbda = None, op='Rmsprop'):
 #         CNNLayers.__init__(self)
-#         self.input_image, self.input_data, self.output, self.p_keep = self.createVariables(train, data_list, batch_size, input_dimensions)
+#         self.input_image = image
+#         self.output = output
+#         self.dropout = p_keep_conv
 #         self.batch_size = batch_size
 #         self.learning_rate = learning_rate
 #         self.beta1 = beta1
 #         self.beta2 = beta2
-#         self.rho = rho
-#         self.lmbda = lmbda
+#         self.w_lmbda = w_lmbda
+#         self.b_lmbda = b_lmbda
 #         self.op = op
 
 
 #     def build_model(self):
+#         weights = {}
+#         layersOut = {}
+#         biases = {}
+
+#         layersOut['input'] = self.input_image
+#         layersOut['output'] = self.output
+
+#         prev_layer = self.input_image
+
+#         prev_layer_fltr = 1
+#         layer_counter = 0
+#         num_fc_done = 0
+        
