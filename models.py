@@ -104,6 +104,7 @@ class AutoEncoder(CNNLayers):
             layer_outputs['layer'+str(i+1)], weights['w'+str(i+1)], biases['w'+str(i+1)] \
                     = self.fcLayer(prev_layer, unit_sizes[i:i+2], relu[i], batch_norm[i])
             prev_layer = layer_outputs['layer'+str(i+1)]
+            print unit_sizes[i:i+2]
 
         encode.append(prev_layer)
         self.encode = prev_layer
@@ -117,6 +118,7 @@ class AutoEncoder(CNNLayers):
                     = self.fcLayer(prev_layer, unit_sizes[i-len(hidden_units):i-len(hidden_units)+2],
                                    relu[i], batch_norm[i])
             prev_layer = layer_outputs['layer'+str(i+1)]
+            print unit_sizes[i-len(hidden_units):i-len(hidden_units)+2]
 
         print("The decoded data size is: " + str(prev_layer.get_shape().as_list()))
 
