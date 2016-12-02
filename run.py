@@ -1,12 +1,11 @@
 import tensorflow as tf
 import numpy as np
+from sklearn.metrics import confusion_matrix
 from utils import *
 from layers import *
 from models import *
 from input_brain import *
 import os
-import create_brain_binaries
-import argparse
 from constants import *
 
 FLAGS = tf.app.flags.FLAGS
@@ -271,8 +270,8 @@ def run_model(train, model, binary_filelist, run_all, batch_size, max_steps, ove
 
     print("Reading the binary file list: " + binary_filelist)
     print("Using the following input dimensions: " + str(input_dimensions))
-
     print("Created the entire model! YAY!")
+
     # Create a saver
     saver = tf.train.Saver(tf.all_variables())
 
@@ -286,36 +285,26 @@ def run_model(train, model, binary_filelist, run_all, batch_size, max_steps, ove
         coord = tf.train.Coordinator()
         tf.train.start_queue_runners(coord=coord, sess=sess)
 
-        ckpt = tf.train.get_checkpoint_state(FLAGS.checkpoint_dir)
-        if train:
-            # Get checkpoint at step: i_stopped
-            if (not overrideChkpt) and ckpt and ckpt.model_checkpoint_path:
-                saver.restore(sess, ckpt.model_checkpoint_path)
-                print("Fetching checkpoint data from:")
-                print(ckpt.model_checkpoint_path)
-                i_stopped = int(ckpt.model_checkpoint_path.split('/')[-1].split('-')[-1])
-            elif overrideChkpt:
-                print('Overriding the checkpoints!')
-                i_stopped = 0
-            else:
-                print('No checkpoint file found!')
-                i_stopped = 0
-
-        else: # testing (or running all files)
-            # Get most recent checkpoint & start from beginning
-            if ckpt and ckpt.model_checkpoint_path:
-                saver.restore(sess, ckpt.model_checkpoint_path)
-                print(ckpt.model_checkpoint_path)
-            i_stopped = 0
-
+        i_stopped = setup_checkpoint(train, sess, saver, FLAGS.checkpoint_dir, overrideChkpt)
 
         compressed_filelist = []
+        predictions = []
+        targets = []
         for i in range(i_stopped, max_steps):
             print("Running iteration {} of TF Session".format(i))
             if train:
                 _, loss = sess.run([train_op, cost])
             else:
-                loss = sess.run(cost)
+                if model == 'cae' or model == 'ae':
+                    loss = sess.run(cost)
+                else:
+                    pred, loss, targ = sess.run([layer_outputs['pred'], cost, output])
+                    pred = round(pred[0][0])
+                    targ = targ[0]
+                    print "Prediction is: " + str(pred)
+                    print "Target is: " + str(targ)
+                    predictions.append(pred)
+                    targets.append(targ)
             print("The current loss is: " + str(loss))
             # print("Current predicted labels are: " + str(layer_outputs['pred'].eval()))
 
@@ -327,94 +316,36 @@ def run_model(train, model, binary_filelist, run_all, batch_size, max_steps, ove
 
             # If running all files for CAE
             if not train and run_all and model == 'cae':
-                # Saving output of CAE to binary files
-                encoded_image = np.asarray(sess.run(encode))
-                # Get label and phenotype data
-                patient_label = np.asarray(sess.run(output))
-                # patient_pheno = np.asarray(sess.run(pheno_data))
-                patient_pheno = np.asarray(sess.run(data))
-                # ourput image currently: 31x37x31
-
-                bin_path = create_brain_binaries.create_compressed_binary(
-                                        patient_pheno, encoded_image,
-                                        patient_label, FLAGS.reduced_dir, str(i+1))
+                bin_path = create_CEA_reduced_binary(sess, encode, output,
+                                                    data, FLAGS, i)
                 compressed_filelist.append(bin_path)
 
         coord.request_stop()
         coord.join(stop_grace_period_secs=10)
 
+        if not train and model != 'cae' and model != 'ae':
+            conf_matrix = confusion_matrix(targets, predictions)
+            accuracy = (conf_matrix[0, 0] + conf_matrix[1, 1]) / float(np.sum(conf_matrix))
+            print "Accuracy of the model is: " + str(accuracy)
+            plot_confusion_matrix(conf_matrix)
 
-        # Visualization of CAE output
+        # CAE/AE Output
         if model == 'ae':
             pass
         elif model == 'cae':
-            # If running all files for CAE
-            if not train and run_all:
-                create_brain_binaries.save_and_split(compressed_filelist,
-                                                     output_binary_filelist,
-                                                     FLAGS.reduced_train_binaries,
-                                                     FLAGS.reduced_test_binaries)
-
-            encodeLayer = np.asarray(sess.run(encode))
-            decodeLayer = np.asarray(sess.run(decode))
-            inputImage = np.asarray(sess.run(brain_image))
-
-            mat2visual(encodeLayer[0, 0,:,:,:, 0], [10, 15, 19], 'encodedImage.png', 'auto')
-            mat2visual(decodeLayer[0, 0,:,:,:, 0], [40, 55, 60], 'decodedImage.png', 'auto')
-            mat2visual(inputImage[0, :,:,:, 0], [40, 55, 60], 'inputImage.png', 'auto')
+            generate_CAE_output(train, run_all, sess, encode, decode, brain_image,
+                            compressed_filelist, output_binary_filelist, FLAGS)
 
 
 
 def main(_):
     # Argument parsing
-    parser = argparse.ArgumentParser(description='Evaluation procedure for Salami CNN.')
-    network_group = parser.add_mutually_exclusive_group()
-    data_group = parser.add_mutually_exclusive_group()
-    data_group.add_argument('--train', action="store_true", help='Training the model')
-    data_group.add_argument('--test', action="store_true", help='Testing the model')
-    network_group.add_argument('--model', choices=['ae', 'cae', 'cnn', 'nn', 'mmnn'],
-                        default='mmnn', help='Select model to run.')
-    parser.add_argument('--chkPointDir', dest='chkPt', default='/data/ckpt',
-                        help='Directory to save the checkpoints. Default is /data/ckpt')
-    parser.add_argument('--numIters', dest='numIters', default=200, type=int,
-                        help='Number of Training Iterations. Default is 200')
-    parser.add_argument('--overrideChkpt', dest='overrideChkpt', action="store_true",
-                        help='Override the checkpoints')
-    parser.set_defaults(overrideChkpt=False)
-    args = parser.parse_args()
+    args = extract_parser()
 
-    binary_filelist = None
-    batch_size = 1
-    max_steps = 1071
-    run_all = False
+    # Create conditional variables
+    binary_filelist, batch_size, max_steps, run_all = create_conditions(args, FLAGS)
 
-    if args.train:  # We have 963 train patients
-        if args.model == 'ae':
-            binary_filelist = FLAGS.ae_train_binaries
-        elif args.model == 'cae':
-            binary_filelist = FLAGS.train_binaries
-        else:
-            binary_filelist = FLAGS.reduced_train_binaries
-        batch_size = 32
-        max_steps = args.numIters
-    elif args.test: # We have 108 train patients
-        if args.model == 'ae':
-            binary_filelist = FLAGS.ae_test_binaries
-        elif args.model == 'cae':
-            binary_filelist = FLAGS.test_binaries
-        else:
-            binary_filelist = FLAGS.reduced_test_binaries
-        max_steps = 107
-    else:
-        if args.model == 'ae':
-            binary_filelist = FLAGS.ae_all_binaries
-        elif args.model == 'cae':
-            binary_filelist = FLAGS.all_binaries
-        else:
-            binary_filelist = FLAGS.reduced_all_binaries
-        run_all = True
-
-    # set the checkpoint directory.
+    # Set the checkpoint directory.
     if not os.path.exists(args.chkPt):
         print "Directory '%s' does not exist." % args.chkPt
     FLAGS.checkpoint_dir = args.chkPt
