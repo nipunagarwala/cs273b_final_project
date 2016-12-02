@@ -75,7 +75,7 @@ class AutoEncoder(CNNLayers):
 
         self.output = output
         self.dropout = p_keep_conv
-        
+
         self.batch_size = batch_size
         self.learning_rate = learning_rate
         self.beta1 = beta1
@@ -104,6 +104,7 @@ class AutoEncoder(CNNLayers):
             layer_outputs['layer'+str(i+1)], weights['w'+str(i+1)], biases['w'+str(i+1)] \
                     = self.fcLayer(prev_layer, unit_sizes[i:i+2], relu[i], batch_norm[i])
             prev_layer = layer_outputs['layer'+str(i+1)]
+            print unit_sizes[i:i+2]
 
         encode.append(prev_layer)
         self.encode = prev_layer
@@ -117,6 +118,7 @@ class AutoEncoder(CNNLayers):
                     = self.fcLayer(prev_layer, unit_sizes[i-len(hidden_units):i-len(hidden_units)+2],
                                    relu[i], batch_norm[i])
             prev_layer = layer_outputs['layer'+str(i+1)]
+            print unit_sizes[i-len(hidden_units):i-len(hidden_units)+2]
 
         print("The decoded data size is: " + str(prev_layer.get_shape().as_list()))
 
@@ -151,7 +153,7 @@ class ConvAutoEncoder(CNNLayers):
         self.input_image = image
         self.output = output
         self.dropout = p_keep_conv
-        
+
         self.batch_size = batch_size
         self.learning_rate = learning_rate
         self.beta1 = beta1
@@ -271,7 +273,7 @@ class ConvNN(CNNLayers):
 
     #     return layersOut, weights
 
-    def build_model(self, conv_arch, cnn_num_layers, cnn_num_fc_layers, 
+    def build_model(self, conv_arch, cnn_num_layers, cnn_num_fc_layers,
                         cnn_filter_sz, cnn_num_filters, cnn_stride_sz, cnn_pool_sz, cnn_pool_stride_sz, cnn_batch_norm):
 
         weights = {}
@@ -321,7 +323,7 @@ class ConvNN(CNNLayers):
                 fcShapeConv = fcShapeConv[1:]
                 self.cnn_out_params = reduce(lambda x, y: x*y, fcShapeConv)
                 layersOut['layer'+str(i+1)+'-fc'] = tf.reshape( prev_layer, [self.batch_size, self.cnn_out_params])
-                layersOut['cnn_out'] = layersOut['layer'+str(i+1)+'-fc'] 
+                layersOut['cnn_out'] = layersOut['layer'+str(i+1)+'-fc']
                 prev_layer = layersOut['layer'+str(i+1)+'-fc']
                 layer_counter += 1
                 print("This is the FC Reshape Layer")
@@ -330,10 +332,10 @@ class ConvNN(CNNLayers):
                 continue
 
             if conv_arch[i] == 'fc':
-                in_weights = self.cnn_out_params 
+                in_weights = self.cnn_out_params
                 out_weights =  self.cnn_out_params if (num_fc_done < cnn_num_fc_layers-1) else 1
-                sigm = True if (num_fc_done < cnn_num_fc_layers-1) else False 
-                layersOut['layer'+str(i+1)] ,weights['w'+str(i+1)], biases['b'+str(i+1)] = self.fcLayer(prev_layer, 
+                sigm = True if (num_fc_done < cnn_num_fc_layers-1) else False
+                layersOut['layer'+str(i+1)] ,weights['w'+str(i+1)], biases['b'+str(i+1)] = self.fcLayer(prev_layer,
                                                     [in_weights , out_weights], sigm, True)
                 num_fc_done += 1
                 print("This is the FC NN Layer")
@@ -425,7 +427,7 @@ class MultiModalNN(CNNLayers):
         cumCost = cost
         numEntries = len(self.weights)
 
-        weightVals = self.weights.values() 
+        weightVals = self.weights.values()
         biasVals = self.biases.values()
         for i in range(numEntries-2):
             cumCost = self.add_regularization( cumCost, weightVals[i], self.w_lmbda[i], None, op='l2')
@@ -463,4 +465,3 @@ class ResidualNet(CNNLayers):
         layersOut['input'] = self.input_image
         layersOut['output'] = self.output
 
-        

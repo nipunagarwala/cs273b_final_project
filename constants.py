@@ -4,15 +4,43 @@
 
 #############################################################################################
 ##																						   ##
+##					                   AutoEncoder 										   ##
+##																						   ##
+#############################################################################################
+
+# Auto Encoder (AE)
+AE_LEARNING_RATE = 0.001
+AE_HIDDEN_UNITS = [5,10,15,20]
+
+# activation parameter for the KL Divergence cost term
+AE_RHO = 0.7
+
+# mixing term for the cost function
+AE_LAMBDA = 0.6
+
+# apply batch norm or not
+AE_BATCH_NORM = True
+
+# options for the optimizers: 'Rmsprop' 'adam' 'adagrad'
+AE_OP = 'Rmsprop'
+
+# decay rates for the optimizers
+AE_BETA_1 = 0.99
+
+# decay rate used by 'adam'
+AE_BETA_2 = None
+
+#############################################################################################
+##																						   ##
 ##					          Convolutional AutoEncoder 								   ##
 ##																						   ##
 #############################################################################################
 
 # Convolutional Auto Encoder (CAE)
-CAE_NUM_ENCODE_LAYERS = 2
 CAE_FILTER_SZ = [3,3]
 CAE_NUM_FILTERS = [1,1]
 CAE_STRIDE_SZ = [1,3]
+CAE_NUM_ENCODE_LAYERS = len(CAE_FILTER_SZ)
 CAE_LEARNING_RATE = 0.001
 
 # activation parameter for the KL Divergence cost term
@@ -73,7 +101,7 @@ CONV_ARCH = ['conv', 'conv', 'maxpool', 'conv', 'conv', 'maxpool', 'conv', 'conv
 # Number of layers in the CNN, excluding the reshape layer
 CNN_NUM_LAYERS = len(CONV_ARCH)
 
-CNN_NUM_FC_LAYERS = 3
+CNN_NUM_FC_LAYERS = sum([1 for i in CONV_ARCH if i=='fc'])
 
 CNN_MMLAYER = CONV_ARCH.index("reshape") + 1
 
@@ -120,7 +148,10 @@ CNN_BETA_2 = 0.01
 # Must always end with a 1, to allow for logistic classification
 NN_HIDDEN_UNITS = [32, 64, 64, 32, 1]
 
-# Layer to be fed into Multi-Modal NN
+# Layer to be fed into Multi-Modal NN, 1-indexed
+# Ex. 
+# NN_HIDDEN_UNITS = [16, 64, 64, 32, 1], NN_MMLAYER = 4
+# 	-> the layer with hidden nodes 32 (the 4th layer) will be fed into MMNN
 NN_MMLAYER = 4
 
 NN_REG_CONSTANTS_WEIGHTS = [0.6]*len(NN_HIDDEN_UNITS)
