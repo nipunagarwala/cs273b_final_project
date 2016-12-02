@@ -59,7 +59,7 @@ def createAutoEncoderModel(data, output, p_keep_conv, batch_size):
     # hyperparameters
     learning_rate = AE_LEARNING_RATE
     beta1 = AE_BETA_1
-    beta2 = AE_BETA_2 
+    beta2 = AE_BETA_2
     rho = AE_RHO
     lmbda = AE_LAMBDA
     op = AE_OP
@@ -72,7 +72,7 @@ def createAutoEncoderModel(data, output, p_keep_conv, batch_size):
     #rhoVec = [0.1]*numForwardLayers*2
 
     print("Creating the AutoEncoder Object")
-    ae = AutoEncoder(data, output, p_keep_conv, batch_size, 
+    ae = AutoEncoder(data, output, p_keep_conv, batch_size,
                      learning_rate, beta1, beta2, rho=rho, lmbda=lmbda, op=op)
 
     allRelu = [True]*numForwardLayers*2
@@ -88,13 +88,13 @@ def createAutoEncoderModel(data, output, p_keep_conv, batch_size):
     print("Building the Autoencoder Model")
     layer_outputs, weights, weight_shapes, encode, decode, pheno_data, label \
                 = ae.build_model(hidden_units, allRelu, allBatch)
- 
+
     print("Setting up the Training model of the Autoencoder")
     cost, train_op = ae.train()
 
     return layer_outputs, weights, encode, decode, \
                         pheno_data, label, cost, train_op
-                        
+
 
 def createConvAutoEncoderModel(image, output, p_keep_conv,batch_size):
 
@@ -104,7 +104,7 @@ def createConvAutoEncoderModel(image, output, p_keep_conv,batch_size):
     num_filters = CAE_NUM_FILTERS
     learning_rate = CAE_LEARNING_RATE
     beta1 = CAE_BETA_1
-    beta2 = CAE_BETA_2 
+    beta2 = CAE_BETA_2
     rho = CAE_RHO
     lmbda = CAE_LAMBDA
     op = CAE_OP
@@ -161,13 +161,13 @@ def createCNNModel(image, output, p_keep_conv,batch_size, multiModal=False):
     print("Creating the Convolutional Neural Network Object")
 
     deepCnn = ConvNN(image, output, p_keep_conv, numLayers, batch_size,
-                        CNN_LEARNING_RATE, CNN_BETA_1, CNN_BETA_2, w_lmbda = CNN_REG_CONSTANTS_WEIGHTS, 
+                        CNN_LEARNING_RATE, CNN_BETA_1, CNN_BETA_2, w_lmbda = CNN_REG_CONSTANTS_WEIGHTS,
                             b_lmbda = CNN_REG_CONSTANTS_BIAS , op=CNN_OP)
     print("Building the Deep CNN Model")
     # layersOut, weights, image, data, label = deepCnn.build_model(True, False)
 
     # layersOut, weights =  deepCnn.build_model(True, False)
-    layersOut, weights =  deepCnn.build_model(CONV_ARCH, CNN_NUM_LAYERS, CNN_NUM_FC_LAYERS, 
+    layersOut, weights =  deepCnn.build_model(CONV_ARCH, CNN_NUM_LAYERS, CNN_NUM_FC_LAYERS,
                         CNN_FILTER_SZ, CNN_NUM_FILTERS, CNN_STRIDE_SZ, CNN_POOL_SZ, CNN_POOL_STRIDE_SZ, CNN_BATCH_NORM)
 
     if multiModal:
@@ -200,7 +200,7 @@ def createVanillaNN(data, output, p_keep_conv,batch_size, multiModal=False):
 
 
     print("Building the Vanilla Neural Network Model")
-    layersOut, weights = deepNN.build_model(len(NN_HIDDEN_UNITS), hidden_units, sigmoidOn, 
+    layersOut, weights = deepNN.build_model(len(NN_HIDDEN_UNITS), hidden_units, sigmoidOn,
                                     batchOn, NN_MMLAYER)
 
     if multiModal:
@@ -220,8 +220,8 @@ def createMultiModalNN(image, data, output, p_keep_conv, batch_size):
     # layersFc, weightsFc = createVanillaNN(train, binary_filelist, input_dimensions, batch_size, True, image, data, label)
     layersFc, weightsFc = createVanillaNN(data, output, p_keep_conv,batch_size,  True)
 
-    learning_rate = MMNN_LEARNING_RATE 
-    beta1 = MMNN_BETA_1 
+    learning_rate = MMNN_LEARNING_RATE
+    beta1 = MMNN_BETA_1
     beta2 = MMNN_BETA_2
     op = MMNN_OP
     batchOn = MMNN_BATCH_NORM
@@ -251,9 +251,9 @@ def run_model(train, model, binary_filelist, run_all, batch_size, max_steps, ove
         input_dimensions = [91, 109, 91]
     else:
         input_dimensions = [31, 37, 31]
-    
+
     image, data, output, p_keep_conv = createVariables(train, binary_filelist, input_dimensions, batch_size)
- 
+
     if model == 'ae':
         layer_outputs, weights, encode, decode, \
         pheno_data, label, cost, train_op = createAutoEncoderModel(data, output, p_keep_conv, batch_size)
@@ -378,13 +378,13 @@ def main(_):
                         help='Directory to save the checkpoints. Default is /data/ckpt')
     parser.add_argument('--numIters', dest='numIters', default=200, type=int,
                         help='Number of Training Iterations. Default is 200')
-    parser.add_argument('--overrideChkpt', dest='overrideChkpt', action="store_true", 
+    parser.add_argument('--overrideChkpt', dest='overrideChkpt', action="store_true",
                         help='Override the checkpoints')
     parser.set_defaults(overrideChkpt=False)
     args = parser.parse_args()
 
     binary_filelist = None
-    batch_size = 32
+    batch_size = 1
     max_steps = 1071
     run_all = False
 
@@ -395,7 +395,7 @@ def main(_):
             binary_filelist = FLAGS.train_binaries
         else:
             binary_filelist = FLAGS.reduced_train_binaries
-        # batch_size = 32
+        batch_size = 32
         max_steps = args.numIters
     elif args.test: # We have 108 train patients
         if args.model == 'ae':
@@ -404,7 +404,7 @@ def main(_):
             binary_filelist = FLAGS.test_binaries
         else:
             binary_filelist = FLAGS.reduced_test_binaries
-        max_steps = 108
+        max_steps = 107
     else:
         if args.model == 'ae':
             binary_filelist = FLAGS.ae_all_binaries
