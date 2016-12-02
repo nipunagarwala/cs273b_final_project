@@ -1,5 +1,6 @@
 import tensorflow as tf
 import numpy as np
+from sklearn.metrics import confusion_matrix
 from utils import *
 from layers import *
 from models import *
@@ -270,7 +271,7 @@ def run_model(train, model, binary_filelist, run_all, batch_size, max_steps, ove
     print("Reading the binary file list: " + binary_filelist)
     print("Using the following input dimensions: " + str(input_dimensions))
     print("Created the entire model! YAY!")
-    
+
     # Create a saver
     saver = tf.train.Saver(tf.all_variables())
 
@@ -284,15 +285,26 @@ def run_model(train, model, binary_filelist, run_all, batch_size, max_steps, ove
         coord = tf.train.Coordinator()
         tf.train.start_queue_runners(coord=coord, sess=sess)
 
-        i_stopped = setup_checkpoint(train, sess, saver, FLAGS.checkpoint_dir)
+        i_stopped = setup_checkpoint(train, sess, saver, FLAGS.checkpoint_dir, overrideChkpt)
 
         compressed_filelist = []
+        predictions = []
+        targets = []
         for i in range(i_stopped, max_steps):
             print("Running iteration {} of TF Session".format(i))
             if train:
                 _, loss = sess.run([train_op, cost])
             else:
-                loss = sess.run(cost)
+                if model == 'cae' or model == 'ae':
+                    loss = sess.run(cost)
+                else:
+                    pred, loss, targ = sess.run([layer_outputs['pred'], cost, output])
+                    pred = round(pred[0][0])
+                    targ = targ[0]
+                    print "Prediction is: " + str(pred)
+                    print "Target is: " + str(targ)
+                    predictions.append(pred)
+                    targets.append(targ)
             print("The current loss is: " + str(loss))
             # print("Current predicted labels are: " + str(layer_outputs['pred'].eval()))
 
@@ -311,9 +323,17 @@ def run_model(train, model, binary_filelist, run_all, batch_size, max_steps, ove
         coord.request_stop()
         coord.join(stop_grace_period_secs=10)
 
+        if not train and model != 'cae' and model != 'ae':
+            conf_matrix = confusion_matrix(targets, predictions)
+            accuracy = (conf_matrix[0, 0] + conf_matrix[1, 1]) / float(np.sum(conf_matrix))
+            print "Accuracy of the model is: " + str(accuracy)
+            plot_confusion_matrix(conf_matrix)
 
-        # CAE Output
-        generate_CAE_output(train, model, run_all, sess, encode, decode, brain_image,
+        # CAE/AE Output
+        if model == 'ae':
+            pass
+        elif model == 'cae':
+            generate_CAE_output(train, run_all, sess, encode, decode, brain_image,
                             compressed_filelist, output_binary_filelist, FLAGS)
 
 

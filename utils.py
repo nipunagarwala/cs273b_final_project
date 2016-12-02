@@ -428,7 +428,7 @@ def create_conditions(args, FLAGS):
 
     return binary_filelist, batch_size, max_steps, run_all
 
-def setup_checkpoint(train, sess, saver, directory):
+def setup_checkpoint(train, sess, saver, directory, overrideChkpt):
     ckpt = tf.train.get_checkpoint_state(directory)
     if train:
         # Get checkpoint at step: i_stopped
@@ -453,38 +453,58 @@ def setup_checkpoint(train, sess, saver, directory):
 
     return i_stopped
 
-def generate_CAE_output(train, model, run_all, encode, decode, brain_image, compressed_filelist, output_binary_filelist, FLAGS):
-    if model == 'ae':
-        pass
-    elif model == 'cae':
-        # If running all files for CAE
-        if not train and run_all:
-            create_brain_binaries.save_and_split(compressed_filelist,
-                                                 output_binary_filelist,
-                                                 FLAGS.reduced_train_binaries,
-                                                 FLAGS.reduced_test_binaries)
+def generate_CAE_output(train, run_all, encode, decode, brain_image, compressed_filelist, output_binary_filelist, FLAGS):
+    # If running all files for CAE
+    if not train and run_all:
+        create_brain_binaries.save_and_split(compressed_filelist,
+                                             output_binary_filelist,
+                                             FLAGS.reduced_train_binaries,
+                                             FLAGS.reduced_test_binaries)
 
-        # Create visuals of last example
-        encodeLayer = np.asarray(sess.run(encode))
-        decodeLayer = np.asarray(sess.run(decode))
-        inputImage = np.asarray(sess.run(brain_image))
+    # Create visuals of last example
+    encodeLayer = np.asarray(sess.run(encode))
+    decodeLayer = np.asarray(sess.run(decode))
+    inputImage = np.asarray(sess.run(brain_image))
 
-        mat2visual(encodeLayer[0, 0,:,:,:, 0], [10, 15, 19], 'encodedImage.png', 'auto')
-        mat2visual(decodeLayer[0, 0,:,:,:, 0], [40, 55, 60], 'decodedImage.png', 'auto')
-        mat2visual(inputImage[0, :,:,:, 0], [40, 55, 60], 'inputImage.png', 'auto')
+    mat2visual(encodeLayer[0, 0,:,:,:, 0], [10, 15, 19], 'encodedImage.png', 'auto')
+    mat2visual(decodeLayer[0, 0,:,:,:, 0], [40, 55, 60], 'decodedImage.png', 'auto')
+    mat2visual(inputImage[0, :,:,:, 0], [40, 55, 60], 'inputImage.png', 'auto')
 
 
 def create_CEA_reduced_binary(sess, encode, output, data, FLAGS, i):
-        # Saving output of CAE to binary files
-        encoded_image = np.asarray(sess.run(encode))
-        # Get label and phenotype data
-        patient_label = np.asarray(sess.run(output))
-        # patient_pheno = np.asarray(sess.run(pheno_data))
-        patient_pheno = np.asarray(sess.run(data))
-        # ourput image currently: 31x37x31
+    # Saving output of CAE to binary files
+    encoded_image = np.asarray(sess.run(encode))
+    # Get label and phenotype data
+    patient_label = np.asarray(sess.run(output))
+    # patient_pheno = np.asarray(sess.run(pheno_data))
+    patient_pheno = np.asarray(sess.run(data))
+    # ourput image currently: 31x37x31
 
-        bin_path = create_brain_binaries.create_compressed_binary(
-                                patient_pheno, encoded_image,
-                                patient_label, FLAGS.reduced_dir, str(i+1))
+    bin_path = create_brain_binaries.create_compressed_binary(
+                            patient_pheno, encoded_image,
+                            patient_label, FLAGS.reduced_dir, str(i+1))
 
-        return bin_path
+    return bin_path
+
+
+def plot_confusion_matrix(df_confusion, title='Confusion matrix', cmap=plt.cm.gray_r):
+    fig = plt.figure()
+    plt.clf()
+    ax = fig.add_subplot(111)
+    ax.set_aspect(1)
+    res = ax.imshow(np.array(df_confusion), cmap=plt.cm.magma,
+                    interpolation='nearest')
+
+    width, height = df_confusion.shape
+
+    for x in xrange(width):
+        for y in xrange(height):
+            ax.annotate(str(df_confusion[x][y]), xy=(y, x),
+                        horizontalalignment='center',
+                        verticalalignment='center')
+
+    cb = fig.colorbar(res)
+    labels = '01'
+    plt.xticks(range(width), labels[:width])
+    plt.yticks(range(height), labels[:height])
+    plt.savefig('confusion_matrix.png', format='png')
