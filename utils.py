@@ -492,7 +492,7 @@ def plot_confusion_matrix(df_confusion, title='Confusion matrix', cmap=plt.cm.gr
     plt.clf()
     ax = fig.add_subplot(111)
     ax.set_aspect(1)
-    res = ax.imshow(np.array(df_confusion), cmap=plt.cm.magma,
+    res = ax.imshow(np.array(df_confusion), cmap=plt.cm.jet,
                     interpolation='nearest')
 
     width, height = df_confusion.shape
@@ -507,4 +507,6 @@ def plot_confusion_matrix(df_confusion, title='Confusion matrix', cmap=plt.cm.gr
     labels = '01'
     plt.xticks(range(width), labels[:width])
     plt.yticks(range(height), labels[:height])
+    plt.xlabel('Prediction')
+    plt.ylabel('Actual')
     plt.savefig('confusion_matrix.png', format='png')

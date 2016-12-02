@@ -299,6 +299,7 @@ def run_model(train, model, binary_filelist, run_all, batch_size, max_steps, ove
                     loss = sess.run(cost)
                 else:
                     pred, loss, targ = sess.run([layer_outputs['pred'], cost, output])
+                    print "Prediction Probability: " + str(pred[0][0])
                     pred = round(pred[0][0])
                     targ = targ[0]
                     print "Prediction is: " + str(pred)
@@ -326,7 +327,13 @@ def run_model(train, model, binary_filelist, run_all, batch_size, max_steps, ove
         if not train and model != 'cae' and model != 'ae':
             conf_matrix = confusion_matrix(targets, predictions)
             accuracy = (conf_matrix[0, 0] + conf_matrix[1, 1]) / float(np.sum(conf_matrix))
+            recall = conf_matrix[1, 1] / float(np.sum(conf_matrix[1, :]))
+            precision = conf_matrix[1, 1] / float(np.sum(conf_matrix[:, 1]))
+            f_score = 2 * recall * precision / (precision + recall)
             print "Accuracy of the model is: " + str(accuracy)
+            print "Recall of the model is: " + str(recall)
+            print "Precision of the model is: " + str(precision)
+            print "F-score of the model is: " + str(f_score)
             plot_confusion_matrix(conf_matrix)
 
         # CAE/AE Output
