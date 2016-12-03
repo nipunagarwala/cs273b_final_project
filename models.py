@@ -438,7 +438,7 @@ class MultiModalNN(CNNLayers):
 
 
 class ResidualNet(CNNLayers):
-    def __init__(self, image, output, p_keep_conv, batch_size=1, numResUnits, learning_rate=1e-3, beta1=0.99, beta2=0.99, w_lmbda = None, b_lmbda = None, op='Rmsprop'):
+    def __init__(self, image, output, p_keep_conv, numResUnits, batch_size=1, learning_rate=1e-3, beta1=0.99, beta2=0.99, w_lmbda = None, b_lmbda = None, op='Rmsprop'):
         CNNLayers.__init__(self)
         self.input_image = image
         self.output = output
@@ -454,7 +454,7 @@ class ResidualNet(CNNLayers):
         self.op = op
 
     def build_custom_units(self, resUnitNames, resUnitFilters, resUnitStrides):
-
+        pass
 
     def build_model(self, in_conv_filter,in_conv_stride, in_pool, in_pool_stride, resUnit_filter, resUnit_filter_stride, resUnit_pool,
                         resUnit_pool_stride, resUnit, numFilter ):
