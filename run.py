@@ -335,6 +335,9 @@ def run_model(train, model, binary_filelist, run_all, batch_size, max_steps, ove
             print "Precision of the model is: " + str(precision)
             print "F-score of the model is: " + str(f_score)
             plot_confusion_matrix(conf_matrix)
+            const_dict = create_constants_dictionary()
+            with open('constants.json', 'w') as const_out:
+                json.dump(const_dict, const_out, sort_keys=True, indent=4, ensure_ascii=False)
 
         # CAE/AE Output
         if model == 'ae':
