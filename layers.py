@@ -192,23 +192,53 @@ class CNNLayers(Layers):
         return tf.maximum(x, leak*x)
 
 
-    def residual_unit(self, prev_layer_out, layer_count, weight_dict, bias_dict, w_shape, layer_stride, num_dim = '2d',
-                            padding='SAME', if_relu = True, batchNorm = True):
+class ResidualUnit(CNNLayers):
 
+    def __init__(self, name, num_in_filters, num_mid_filter, num_end_filters, num_in_str, num_mid_str, num_end_str, filter_size):
+        self.name = name
+        self.num_in_filters = num_in_filters
+        self.num_mid_filter = num_mid_filter
+        self.num_end_filters = num_end_filters
+        self.num_in_str = num_in_str
+        self.num_mid_str = num_mid_str
+        self.num_end_str = num_end_str
+        self.filter_size = filter_size
+
+
+    def build_residual_unit(self, prev_layer_out, layer_count, weight_dict, bias_dict, num_dim = '2d', padding='SAME'):
         input_layer = prev_layer_out
-        numFilters = w_shape[len(w_shape)-1]
+        prev_num_filters = prev_layer_out.get_shape().as_list()[4]
 
-        wName = 'layer'+str(layer_count+1)
-        nextLayer, weight_dict[wName], bias_dict[wName] = self.conv_layer(input_layer, w_shape, layer_stride, wName, num_dim, 
-                                                            padding,if_relu = if_relu, batchNorm = batch_norm)
+        filterIncSz = [1,1,1,prev_num_filters, self.num_in_filters]
+        layInStride = [1,self.num_in_str,self.num_in_str,self.num_in_str,1]
+        wInName = 'layer'+str(layer_count+1)
+        nextLayer, weight_dict[wInName], bias_dict[wInName] = self.conv_layer(input_layer, filterIncSz, layInStride, wInName, num_dim, 
+                                                            padding,if_relu = True, batchNorm = True)
 
-        nextW_shape = w_shape
-        nextW_shape[3] = numFilters
-        nextW_name = 'layer'+str(layer_count+2)
+        
+        filterMidSz = [self.filter_size,self.filter_size,self.filter_size,self.num_in_filters, self.num_mid_filters]
+        layMidstride = [1,self.num_mid_str,self.num_mid_str,self.num_mid_str,1]
+        wMidName = 'layer'+str(layer_count+2)
+        nextLayer, weight_dict[wMidName ], bias_dict[wMidName ] = self.conv_layer(nextLayer, filterMidSz, layMidstride, wMidName, num_dim, 
+                                                            padding,if_relu = True, batchNorm = True)
 
-        nextLayer, weight_dict[nextW_name], bias_dict[nextW_name] = self.conv_layer(nextLayer, nextW_shape, layer_stride, nextW_name, 
-                                                num_dim, padding,if_relu = if_relu, batchNorm = batch_norm)
+
+        filterEndSz = [1,1,1,self.num_mid_filters, self.num_end_filters]
+        layEndstride = [1,self.num_end_str,self.num_end_str,self.num_end_str,1]
+        wEndName = 'layer'+str(layer_count+3)
+        lastLayer, weight_dict[wEndName], bias_dict[wEndName] = self.conv_layer(nextLayer, filterEndSz, layEndstride, wEndName, num_dim, 
+                                                            padding,if_relu = False, batchNorm = True)
 
 
-        output_layer = input_layer + nextLayer
-        return output_layer, (layer_count+2)
+        if self.num_in_str > 1:
+            reshapeFilterSz = [1,1,1,prev_num_filters, self.num_end_filters]
+            wReshapeName = 'in'+str(layer_count+3)
+            input_layer, _, _ = self.conv_layer(input_layer, reshapeFilterSz, layInStride, wReshapeName, 
+                                                num_dim, padding, if_relu = False, batchNorm = batch_norm)
+
+        output_layer = input_layer + lastLayer
+        output_layer = self.relu(output_layer)
+
+        return output_layer, layer_count+3
+
+        

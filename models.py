@@ -437,31 +437,31 @@ class MultiModalNN(CNNLayers):
         return cumCost, train_op
 
 
-# class ResidualNet(CNNLayers):
-#     def __init__(self, image, output, p_keep_conv, batch_size=1, learning_rate=1e-3, beta1=0.99, beta2=0.99, w_lmbda = None, b_lmbda = None, op='Rmsprop'):
-#         CNNLayers.__init__(self)
-#         self.input_image = image
-#         self.output = output
-#         self.dropout = p_keep_conv
-#         self.batch_size = batch_size
-#         self.learning_rate = learning_rate
-#         self.beta1 = beta1
-#         self.beta2 = beta2
-#         self.w_lmbda = w_lmbda
-#         self.b_lmbda = b_lmbda
-#         self.op = op
+class ResidualNet(CNNLayers):
+    def __init__(self, image, output, p_keep_conv, numResUnits, batch_size=1, learning_rate=1e-3, beta1=0.99, beta2=0.99, w_lmbda = None, b_lmbda = None, op='Rmsprop'):
+        CNNLayers.__init__(self)
+        self.input_image = image
+        self.output = output
+        self.dropout = p_keep_conv
+        self.numResUnits = numResUnits
 
+        self.batch_size = batch_size
+        self.learning_rate = learning_rate
+        self.beta1 = beta1
+        self.beta2 = beta2
+        self.w_lmbda = w_lmbda
+        self.b_lmbda = b_lmbda
+        self.op = op
 
-#     def build_model(self):
-#         weights = {}
-#         layersOut = {}
-#         biases = {}
+    def build_custom_units(self, resUnitNames, resUnitFilters, resUnitStrides):
+        pass
 
-#         layersOut['input'] = self.input_image
-#         layersOut['output'] = self.output
+    def build_model(self, in_conv_filter,in_conv_stride, in_pool, in_pool_stride, resUnit_filter, resUnit_filter_stride, resUnit_pool,
+                        resUnit_pool_stride, resUnit, numFilter ):
+        weights = {}
+        layersOut = {}
+        biases = {}
 
-#         prev_layer = self.input_image
+        layersOut['input'] = self.input_image
+        layersOut['output'] = self.output
 
-#         prev_layer_fltr = 1
-#         layer_counter = 0
-#         num_fc_done = 0

@@ -192,6 +192,7 @@ def loadROI_All():
         if covData is not None:
             np.save('./ROI/'+str(i), covData)
 
+import h5py
 def write2hdf5(filename, dict2store):
     """
     Write items in a dictionary to an hdf5file
@@ -206,18 +207,80 @@ def write2hdf5(filename, dict2store):
         for key,value in dict2store.iteritems():
             hf.create_dataset(key, data=value,compression="lzf")
 
-def saveWeights(metafile = './chkpt/model.ckpt-99.meta', chkptfile = './chkpt/model.ckpt-99'):
+def hdf52dict(hdf5Filename):
+    """
+    Loads an HDF5 file of a game and returns a dictionary of the contents
+
+    @type   hdf5Filename:   String
+    @param  hdf5Filename:   Filename of the hdf5 file.
+    """
+    retDict = {}
+    with h5py.File(hdf5Filename,'r') as hf:
+        for key in hf.keys():
+            retDict[key] = np.array(hf.get(key))
+
+    return retDict
+
+def print_hdf5Files(h5filename):
+    with h5py.File(h5filename,'r') as hf:
+        for key in hf.keys():
+            print '-'*20
+            print key
+            chil = hf.get(key)
+            print chil
+            for key2 in chil:
+                print key2
+                chil2 = chil.get(key2)
+                print chil2
+                print chil2.value
+
+#print_hdf5Files('example2_weights.hdf5')
+
+def saveWeights(metafile, chkptfile, h5filename, weight_names_tf):
     import tensorflow as tf
+    # load the checkpointed session
     sess = tf.Session()
     new_saver = tf.train.import_meta_graph(metafile)
     new_saver.restore(sess, chkptfile)
 
+    tf_weight_vals = {}
     all_vars = tf.trainable_variables()
     for v in all_vars:
-        print('-'*30)
-        print(v.name)
-        print(v.get_shape())
-        print(sess.run(v))
+        tf_weight_vals[v.name] = sess.run(v)
+
+    print tf_weight_vals.keys()
+
+    f = h5py.File(h5filename, 'w')
+    for layerIndx in range(len(weight_names_tf)):
+        g = f.create_group('layer'+str(layerIndx))
+
+        weight_names = []
+        weight_values = []
+        numVars = len(weight_names_tf[layerIndx])
+        for i in range(numVars):
+            name = 'param_' + str(i)
+            weight_names.append(name.encode('utf8'))
+            weight_values.append(tf_weight_vals[weight_names_tf[layerIndx][i]])
+        g.attrs['weight_names'] = weight_names
+
+        for name, val in zip(weight_names, weight_values):
+            param_dset = g.create_dataset(name, val.shape,
+                                          dtype=val.dtype)
+            if not val.shape:
+                # scalar
+                param_dset[()] = val
+            else:
+                param_dset[:] = val
+
+    f.flush()
+    f.close()
+
+# metafile = './chkpt/model.ckpt-99.meta'
+# chkptfile = './chkpt/model.ckpt-99'
+# h5filename = 'a.hdf5'
+# weight_names_tf = [('layer1_filters:0','Variable:0'),('layer2_filters:0','Variable_1:0'),()]
+# saveWeights(metafile,chkptfile,h5filename,weight_names_tf)
+# print_hdf5Files(h5filename)
 
 def brainRegion2brainID(brainRegions):
     """
