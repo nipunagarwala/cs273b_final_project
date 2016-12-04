@@ -1,6 +1,7 @@
 import tensorflow as tf
 import numpy as np
 from utils import *
+from utils_visual import *
 from layers import *
 from models import *
 from input_brain import *

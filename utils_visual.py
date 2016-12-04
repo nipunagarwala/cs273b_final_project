@@ -1,3 +1,22 @@
+from operator import truediv
+
+import numpy as np
+import csv
+import itertools
+import matplotlib as ml
+import os
+ml.use("agg")
+import matplotlib.pyplot as plt
+import math
+import argparse
+import create_brain_binaries
+import tensorflow as tf
+from sklearn.metrics import confusion_matrix
+
+from mpl_toolkits.axes_grid1 import make_axes_locatable
+
+BRAIN_SZ = (91,109,91)
+BRAIN_REGION_SZ = 116
 
 import h5py
 def write2hdf5(filename, dict2store):
