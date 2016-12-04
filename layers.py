@@ -90,8 +90,12 @@ class Layers(object):
     def minimization_function(self, cost, learning_rate, beta1, beta2, opt='Rmsprop'):
         train_op = None
         if opt == 'Rmsprop':
+            if not beta2:
+                beta2 = 0
             train_op = tf.train.RMSPropOptimizer(learning_rate, beta1, beta2).minimize(cost)
         elif opt == 'adam':
+            if not beta2:
+                beta2 = 0.99
             train_op = tf.train.AdamOptimizer(learning_rate, beta1, beta2).minimize(cost)
         elif opt == 'adagrad':
             train_op = tf.train.AdagradOptimizer(learning_rate, initial_accumulator_value=0.1).minimize(cost)
