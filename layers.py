@@ -10,13 +10,28 @@ from utils import *
 class Layers(object):
 
     def __init__(self):
-        self.stdDev = 0.35
+        pass
 
     ''' Initializes the weights based on the std dev set in the constructor
 
     '''
+    def get_fans(self, shape):
+        if len(shape) == 1:
+            fan_in = 20000
+            fan_out = fan_in
+        elif len(shape) == 2:
+            fan_in = shape[0]
+            fan_out = shape[1]
+        else:
+            receptive_field_size = shape[0] * shape[1] * shape[2]
+            fan_in = shape[3] * receptive_field_size
+            fan_out = shape[4] * receptive_field_size
+        return fan_in, fan_out
+
     def init_weights(self, shape):
-        return tf.Variable(tf.random_normal(shape, stddev=self.stdDev))
+        fan_in, fan_out = self.get_fans(shape)
+        stddev = tf.sqrt(2.0 / fan_in)
+        return tf.Variable(tf.random_normal(shape, stddev=stddev))
 
 
     def dropout(self, prev_layer,  p_keep):
@@ -56,7 +71,7 @@ class Layers(object):
         if  op == 'square':
             cost = tf.reduce_mean(tf.square(tf.sub(model_output,Y)))
         elif op == 'sigmoid':
-            epsilon = 10e-8
+            epsilon = 10e-5
             output = tf.clip_by_value(model_output, epsilon, 1 - epsilon)
             # Create logit of output
             output_logit = tf.log(output / (1 - output))
@@ -75,7 +90,7 @@ class Layers(object):
     def minimization_function(self, cost, learning_rate, beta1, beta2, opt='Rmsprop'):
         train_op = None
         if opt == 'Rmsprop':
-            train_op = tf.train.RMSPropOptimizer(learning_rate, beta1).minimize(cost)
+            train_op = tf.train.RMSPropOptimizer(learning_rate, beta1, beta2).minimize(cost)
         elif opt == 'adam':
             train_op = tf.train.AdamOptimizer(learning_rate, beta1, beta2).minimize(cost)
         elif opt == 'adagrad':
@@ -117,17 +132,12 @@ class CNNLayers(Layers):
     '''
     def __init__(self):
         Layers.__init__(self)
-        self.stdDev = 0.35
-
-    def init_weights(self, shape):
-        return tf.Variable(tf.random_normal(shape, stddev=self.stdDev))
 
     def conv_layer(self, prev_layer_out, w_shape, layer_stride, w_name, num_dim = '2d', padding='SAME',if_relu = True, batchNorm = True):
-        w_conv = tf.Variable(tf.random_normal(w_shape, stddev=self.stdDev),
-                          name=w_name)
+        w_conv = self.init_weights(w_shape)
 
         numFilters = w_shape[len(w_shape)-1]
-        b = tf.Variable(tf.random_normal([numFilters], stddev=self.stdDev))
+        b = self.init_weights([numFilters])
 
         nextLayer = None
         if num_dim == '3d':
@@ -148,12 +158,10 @@ class CNNLayers(Layers):
 
 
     def deconv_layer(self, prev_layer_out, filter_shape, out_shape, layer_stride, w_name, num_dim = '2d',padding='SAME', if_relu = True, batchNorm = True):
-        w_deconv = tf.Variable(tf.random_normal(filter_shape, stddev=self.stdDev),
-                          name=w_name)
-
+        w_deconv = self.init_weights(filter_shape)
 
         numFilters =filter_shape[len(filter_shape)-2]
-        b = tf.Variable(tf.random_normal([numFilters], stddev=self.stdDev))
+        b = self.init_weights([numFilters])
 
         nextLayer = None
 
@@ -212,33 +220,31 @@ class ResidualUnit(CNNLayers):
         filterIncSz = [1,1,1,prev_num_filters, self.num_in_filters]
         layInStride = [1,self.num_in_str,self.num_in_str,self.num_in_str,1]
         wInName = 'layer'+str(layer_count+1)
-        nextLayer, weight_dict[wInName], bias_dict[wInName] = self.conv_layer(input_layer, filterIncSz, layInStride, wInName, num_dim, 
+        nextLayer, weight_dict[wInName], bias_dict[wInName] = self.conv_layer(input_layer, filterIncSz, layInStride, wInName, num_dim,
                                                             padding,if_relu = True, batchNorm = True)
 
-        
+
         filterMidSz = [self.filter_size,self.filter_size,self.filter_size,self.num_in_filters, self.num_mid_filters]
         layMidstride = [1,self.num_mid_str,self.num_mid_str,self.num_mid_str,1]
         wMidName = 'layer'+str(layer_count+2)
-        nextLayer, weight_dict[wMidName ], bias_dict[wMidName ] = self.conv_layer(nextLayer, filterMidSz, layMidstride, wMidName, num_dim, 
+        nextLayer, weight_dict[wMidName ], bias_dict[wMidName ] = self.conv_layer(nextLayer, filterMidSz, layMidstride, wMidName, num_dim,
                                                             padding,if_relu = True, batchNorm = True)
 
 
         filterEndSz = [1,1,1,self.num_mid_filters, self.num_end_filters]
         layEndstride = [1,self.num_end_str,self.num_end_str,self.num_end_str,1]
         wEndName = 'layer'+str(layer_count+3)
-        lastLayer, weight_dict[wEndName], bias_dict[wEndName] = self.conv_layer(nextLayer, filterEndSz, layEndstride, wEndName, num_dim, 
+        lastLayer, weight_dict[wEndName], bias_dict[wEndName] = self.conv_layer(nextLayer, filterEndSz, layEndstride, wEndName, num_dim,
                                                             padding,if_relu = False, batchNorm = True)
 
 
         if self.num_in_str > 1:
             reshapeFilterSz = [1,1,1,prev_num_filters, self.num_end_filters]
             wReshapeName = 'in'+str(layer_count+3)
-            input_layer, _, _ = self.conv_layer(input_layer, reshapeFilterSz, layInStride, wReshapeName, 
+            input_layer, _, _ = self.conv_layer(input_layer, reshapeFilterSz, layInStride, wReshapeName,
                                                 num_dim, padding, if_relu = False, batchNorm = batch_norm)
 
         output_layer = input_layer + lastLayer
         output_layer = self.relu(output_layer)
 
         return output_layer, layer_count+3
-
-        

@@ -11,6 +11,7 @@ import math
 import argparse
 import create_brain_binaries
 import tensorflow as tf
+from sklearn.metrics import confusion_matrix
 
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
@@ -573,3 +574,16 @@ def plot_confusion_matrix(df_confusion, title='Confusion matrix', cmap=plt.cm.gr
     plt.xlabel('Prediction')
     plt.ylabel('Actual')
     plt.savefig('confusion_matrix.png', format='png')
+
+def compute_statistics(targets, predictions):
+    conf_matrix = confusion_matrix(targets, predictions)
+    accuracy = (conf_matrix[0, 0] + conf_matrix[1, 1]) / float(np.sum(conf_matrix))
+    recall = conf_matrix[1, 1] / float(np.sum(conf_matrix[1, :]))
+    precision = conf_matrix[1, 1] / float(np.sum(conf_matrix[:, 1]))
+    f_score = 2 * recall * precision / (precision + recall)
+    print "Accuracy of the model is: " + str(accuracy)
+    print "Recall of the model is: " + str(recall)
+    print "Precision of the model is: " + str(precision)
+    print "F-score of the model is: " + str(f_score)
+
+    return conf_matrix, accuracy, recall, precision, f_score

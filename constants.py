@@ -124,19 +124,19 @@ CNN_REG_OP = 'l2'
 CNN_RHO = 0.7
 
 # Learning rate for backpropogation
-CNN_LEARNING_RATE = 0.0001
+CNN_LEARNING_RATE = 0.001
 
 # apply batch norm or not
 CNN_BATCH_NORM = True
 
 # options for the optimizers: 'Rmsprop' 'adam' 'adagrad'
-CNN_OP = 'adam'
+CNN_OP = 'Rmsprop'
 
 # decay rates for the optimizers
-CNN_BETA_1 = 0.1
+CNN_BETA_1 = 0.9
 
 # decay rate used by 'adam'
-CNN_BETA_2 = 0.01
+CNN_BETA_2 = 0.2
 
 #############################################################################################
 ##																						   ##

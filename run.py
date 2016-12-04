@@ -1,6 +1,5 @@
 import tensorflow as tf
 import numpy as np
-from sklearn.metrics import confusion_matrix
 from utils import *
 from layers import *
 from models import *
@@ -278,9 +277,9 @@ def run_model(train, model, binary_filelist, run_all, batch_size, max_steps, ove
     # Launch the graph in a session
     with tf.Session() as sess:
 
-        init_op = tf.group(tf.initialize_all_variables(), tf.initialize_local_variables())
-
-        init_op.run()
+        if train:
+            init_op = tf.group(tf.initialize_all_variables(), tf.initialize_local_variables())
+            init_op.run()
 
         coord = tf.train.Coordinator()
         tf.train.start_queue_runners(coord=coord, sess=sess)
@@ -290,15 +289,25 @@ def run_model(train, model, binary_filelist, run_all, batch_size, max_steps, ove
         compressed_filelist = []
         predictions = []
         targets = []
+        images_test = []
         for i in range(i_stopped, max_steps):
             print("Running iteration {} of TF Session".format(i))
-            if train:
-                _, loss = sess.run([train_op, cost])
-            else:
-                if model == 'cae' or model == 'ae':
+            if model == 'cae' or model == 'ae':
+                if train:
+                    _, loss = sess.run([train_op, cost])
+                else:
                     loss = sess.run(cost)
+            else:
+                if train:
+                    _, pred, loss, targ = sess.run([train_op, layer_outputs['pred'], cost, output])
+                    print "Prediction Probabilities are: " + str(pred.flatten())
+                    predictions = np.around(pred).flatten()
+                    targets = targ.flatten()
+                    print "Predictions are: " + str(predictions)
+                    print "Target are: " + str(targ)
                 else:
                     pred, loss, targ = sess.run([layer_outputs['pred'], cost, output])
+                    print pred
                     print "Prediction Probability: " + str(pred[0][0])
                     pred = round(pred[0][0])
                     targ = targ[0]
@@ -306,11 +315,12 @@ def run_model(train, model, binary_filelist, run_all, batch_size, max_steps, ove
                     print "Target is: " + str(targ)
                     predictions.append(pred)
                     targets.append(targ)
+                    images_test.append(np.asarray(image.eval()))
             print("The current loss is: " + str(loss))
             # print("Current predicted labels are: " + str(layer_outputs['pred'].eval()))
 
             # Checkpoint model at each 100 iterations
-            should_save = i != 0 and i % 1000 == 0 or (i+1) == max_steps
+            should_save = i != 0 and i % 10 == 0 or (i+1) == max_steps
             if should_save and train:
                 checkpoint_path = os.path.join(FLAGS.checkpoint_dir, 'model.ckpt')
                 saver.save(sess, checkpoint_path, global_step=i)
@@ -325,19 +335,18 @@ def run_model(train, model, binary_filelist, run_all, batch_size, max_steps, ove
         coord.join(stop_grace_period_secs=10)
 
         if not train and model != 'cae' and model != 'ae':
-            conf_matrix = confusion_matrix(targets, predictions)
-            accuracy = (conf_matrix[0, 0] + conf_matrix[1, 1]) / float(np.sum(conf_matrix))
-            recall = conf_matrix[1, 1] / float(np.sum(conf_matrix[1, :]))
-            precision = conf_matrix[1, 1] / float(np.sum(conf_matrix[:, 1]))
-            f_score = 2 * recall * precision / (precision + recall)
-            print "Accuracy of the model is: " + str(accuracy)
-            print "Recall of the model is: " + str(recall)
-            print "Precision of the model is: " + str(precision)
-            print "F-score of the model is: " + str(f_score)
+            print predictions
+            print targets
+            conf_matrix, accuracy, recall, precision, f_score = compute_statistics(targets, predictions)
             plot_confusion_matrix(conf_matrix)
             const_dict = create_constants_dictionary()
+            const_dict['1-Accuracy'] = accuracy
+            const_dict['2-Recall'] = recall
+            const_dict['3-Precison'] = precision
+            const_dict['4-F-score'] = f_score
             with open('constants.json', 'w') as const_out:
                 json.dump(const_dict, const_out, sort_keys=True, indent=4, ensure_ascii=False)
+
 
         # CAE/AE Output
         if model == 'ae':
