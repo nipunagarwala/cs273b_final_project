@@ -7,9 +7,11 @@
 
   # For loop helps process AAL_ROI for each patient
   for (i in 1:length(AAL_ROI)){
+    setwd(code.directory)
     # patient specific AAL_ROI data
     AAL.data = (AAL_ROI[[i]])
     colnames(AAL.data) = region_name$V3
+    setwd(ROI.directory)
     write.csv(AAL.data, paste(names(AAL_ROI[i]),'_ROI_data.csv', sep = ""), 
              row.names = TRUE, col.names = TRUE)
   }
