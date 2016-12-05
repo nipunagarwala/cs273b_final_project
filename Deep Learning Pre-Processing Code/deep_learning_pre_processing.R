@@ -13,12 +13,23 @@
   library(dplyr)
   library(missForest)
   library(ggplot2)
+  library(caret)
+  library(glmnet)
+  library(pROC)
 
   # Directory that contains script files
-  code.directory = '/Users/David/Documents/CS_273B_Final_Project'
+  code.directory = '/Users/davidcohniii/Documents/CS 273 Code and Packets'
 
   # Directory that contains fALFF and/or ROI data sources
-  data.directory = '/Users/David/Documents/CS_273B_Final_Project'
+  data.directory = '/Users/davidcohniii/Documents/CS 273 Code and Packets'
+  
+  # Directory that stores processed fALFF data
+  
+  fALFF.directory = '/Users/davidcohniii/Documents/fALFF Data'
+  
+  # Directory that stores processed ROI data
+  
+  ROI.directory = '/Users/davidcohniii/Documents/ROI Data'
 
   setwd(data.directory)
 
@@ -26,9 +37,12 @@
     fALFF.data = load('ABIDE_fALFF_2.RData')
     source(paste(code.directory, 'process_phenotype_data.R', sep = "/"))
     source(paste(code.directory, 'process_fALFF_data.R', sep = "/"))
+    setwd(code.directory)
+    source(paste(code.directory, 'lasso_logistic_regression.R', sep = "/"))
   }
   if(file.exists('ABIDE_AAL_116_ROI.RData')) {
     ROI.data = load('ABIDE_AAL_116_ROI.RData')
     source(paste(code.directory, 'process_ROI_phenotype_data.R', sep = "/"))
     source(paste(code.directory, 'process_AAL_ROI_data.R', sep = "/"))
+    setwd(code.directory)
   }
