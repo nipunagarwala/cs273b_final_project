@@ -265,3 +265,88 @@ def coolPics():
     # mat2visual(mat, [20,40,60], 'brain_regions.png', [0,1000])
 
     pass
+
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import unicode_literals
+
+import copy
+import itertools
+import multiprocessing as mp
+from utils_visual import *
+
+CLASS_NUM = 2
+
+# adapted from https://github.com/openai/cleverhans/tree/5c6ece85ffe82441a5512b4ff4120fd904aedab4
+
+def jacobian(sess, x, grads, label, X):
+    """
+    TensorFlow implementation of the foward derivative / Jacobian
+    :param x: the input placeholder
+    :param grads: the list of TF gradients returned by jacobian_graph()
+    :param label: the label
+    :param X: numpy array with sample input
+    :return: matrix of forward derivatives flattened into vectors
+    """
+    # Prepare feeding dictionary for all gradient computations
+    feed_dict = {x: X}
+
+    # Initialize a numpy array to hold the Jacobian component values
+    jacobian_val = np.zeros((CLASS_NUM, X.shape[0], X.shape[1], X.shape[2]), dtype=np.float32)
+
+    # Compute the gradients for all classes
+    for class_ind, grad in enumerate(grads):
+        jacobian_val[class_ind] = sess.run(grad, feed_dict)
+
+    return jacobian_val
+
+
+def jacobian_graph(predictions, x):
+    """
+    Create the Jacobian graph to be ran later in a TF session
+    :param predictions: the model's symbolic output (linear output, pre-softmax)
+    :param x: the input placeholder
+    :return:
+    """
+    # This function will return a list of TF gradients
+    list_derivatives = []
+
+    # Define the TF graph elements to compute our derivatives for each class
+    for class_ind in xrange(CLASS_NUM):
+        derivatives, = tf.gradients(predictions[:, class_ind], x)
+        list_derivatives.append(derivatives)
+
+    return list_derivatives
+
+
+def saliency_tf(metafile, chkptfile, sample, label):
+    """
+    TensorFlow implementation of the JSMA (see https://arxiv.org/abs/1511.07528
+    for details about the algorithm design choices).
+    :param metafile     : a metafile for the TF session
+    :param chkptfile    : a checkpoint file for the TF session
+    :param sample       : numpy array with sample input
+    :param label        : label for sample input
+    :return             : output saliency map
+    """
+    # restore a session from the provided files
+    sess = tf.Session()
+    new_saver = tf.train.import_meta_graph(metafile)
+    new_saver.restore(sess, chkptfile)
+
+    # x: the input placeholder
+    x = tf.get_variable('input_placeholder')
+
+    # predictions: the model's symbolic output (linear output, pre-softmax)
+    predictions = tf.get_variable('pre_softmax')
+
+    # connect the gradients from the input to the output
+    grads = jacobian_graph(predictions, x)
+
+    adv_x = copy.copy(sample)
+    # Compute the Jacobian components
+    grad_vals = jacobian(sess, x, grads, label, adv_x)
+
+    # visualize the result
+    mat2visual(grad_vals[0], [20,40,60], 'control.png')
+    mat2visual(grad_vals[1], [20,40,60], 'autistic.png')
