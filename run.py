@@ -7,6 +7,7 @@ from models import *
 from input_brain import *
 from constants import *
 import os
+import datetime
 
 FLAGS = tf.app.flags.FLAGS
 
@@ -273,7 +274,7 @@ def run_model(train, model, binary_filelist, run_all, batch_size, max_steps, ove
     print("Created the entire model! YAY!")
 
     # Create a saver
-    saver = tf.train.Saver(tf.all_variables())
+    saver = tf.train.Saver(tf.all_variables(), max_to_keep=50)
 
     # Launch the graph in a session
     with tf.Session() as sess:
@@ -349,7 +350,10 @@ def run_model(train, model, binary_filelist, run_all, batch_size, max_steps, ove
             const_dict['2-Recall'] = recall
             const_dict['3-Precison'] = precision
             const_dict['4-F-score'] = f_score
-            with open('constants.json', 'w') as const_out:
+
+            now = datetime.datetime.now()
+            filename = now.strftime("%m-%d-%Y_%H:%M") + "_" + model + ".json"
+            with open(filename, 'w') as const_out:
                 json.dump(const_dict, const_out, sort_keys=True, indent=4, ensure_ascii=False)
 
 

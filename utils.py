@@ -197,6 +197,7 @@ def extract_parser():
     parser = argparse.ArgumentParser(description='Evaluation procedure for Salami CNN.')
     network_group = parser.add_mutually_exclusive_group()
     data_group = parser.add_mutually_exclusive_group()
+    checkoint_file_group = parser.add_mutually_exclusive_group()
     data_group.add_argument('--train', action="store_true", help='Training the model')
     data_group.add_argument('--test', action="store_true", help='Testing the model')
     network_group.add_argument('--model', choices=['ae', 'cae', 'cnn', 'nn', 'mmnn'],
@@ -249,7 +250,7 @@ def create_conditions(args, FLAGS):
 def setup_checkpoint(train, sess, saver, directory, overrideChkpt):
     ckpt = tf.train.get_checkpoint_state(directory)
     if train:
-        Get checkpoint at step: i_stopped
+        # Get checkpoint at step: i_stopped
         if (not overrideChkpt) and ckpt and ckpt.model_checkpoint_path:
             saver.restore(sess, ckpt.model_checkpoint_path)
             print("Fetching checkpoint data from:")
