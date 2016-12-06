@@ -65,7 +65,7 @@ def _generate_image_and_label_batch(image, data, label, min_queue_examples, batc
 			[image, data, label],
 			batch_size=batch_size,
 			num_threads=train_preprocess_threads,
-			capacity=min_queue_examples + 3 * batch_size, #TODO: subject to change
+			capacity=min_queue_examples * 2, #+ 3 * batch_size, #TODO: subject to change
 			min_after_dequeue=min_queue_examples,
 			seed=273
 		)
@@ -74,7 +74,7 @@ def _generate_image_and_label_batch(image, data, label, min_queue_examples, batc
 			[image, data, label],
 			batch_size=batch_size,
 			num_threads=train_preprocess_threads,
-			capacity=min_queue_examples + 3 * batch_size #TODO: subject to change
+			capacity=min_queue_examples * 2, #+ 3 * batch_size #TODO: subject to change
 		)
 
 	return images, data, tf.reshape(label_batch, [batch_size])

@@ -197,6 +197,7 @@ def extract_parser():
     parser = argparse.ArgumentParser(description='Evaluation procedure for Salami CNN.')
     network_group = parser.add_mutually_exclusive_group()
     data_group = parser.add_mutually_exclusive_group()
+    checkoint_file_group = parser.add_mutually_exclusive_group()
     data_group.add_argument('--train', action="store_true", help='Training the model')
     data_group.add_argument('--test', action="store_true", help='Testing the model')
     network_group.add_argument('--model', choices=['ae', 'cae', 'cnn', 'nn', 'mmnn'],
@@ -212,7 +213,8 @@ def extract_parser():
 
 def create_conditions(args, FLAGS):
     binary_filelist = None
-    batch_size = 1
+    # batch_size = 1
+    batch_size = 32
     max_steps = 1071
     run_all = False
 
@@ -232,7 +234,8 @@ def create_conditions(args, FLAGS):
             binary_filelist = FLAGS.test_binaries
         else:
             binary_filelist = FLAGS.reduced_test_binaries
-        max_steps = 107
+        # max_steps = 107
+        max_steps = 4
     else:
         if args.model == 'ae':
             binary_filelist = FLAGS.ae_all_binaries
@@ -265,6 +268,8 @@ def setup_checkpoint(train, sess, saver, directory, overrideChkpt):
         if ckpt and ckpt.model_checkpoint_path:
             saver.restore(sess, ckpt.model_checkpoint_path)
             print(ckpt.model_checkpoint_path)
+
+        # saver.restore(sess, '/data/ckpt/model.ckpt-2000')
         i_stopped = 0
 
     return i_stopped

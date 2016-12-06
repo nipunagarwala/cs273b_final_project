@@ -2,7 +2,7 @@ import tensorflow as tf
 import numpy as np
 from input_brain import *
 from utils import *
-from utils_visual import *
+# from utils_visual import *
 
 
 # Define custom API for creating and adding layers to NN Model
