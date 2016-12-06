@@ -1,8 +1,8 @@
 {
-    "1-Accuracy": 0.54205607476635509, 
-    "2-Recall": 0.0, 
-    "3-Precison": NaN, 
-    "4-F-score": NaN, 
+    "1-Accuracy": 0.47663551401869159, 
+    "2-Recall": 0.47916666666666669, 
+    "3-Precison": 0.42592592592592593, 
+    "4-F-score": 0.45098039215686281, 
     "AE_BATCH_NORM": true, 
     "AE_BETA_1": 0.99, 
     "AE_BETA_2": null, 

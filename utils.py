@@ -212,7 +212,8 @@ def extract_parser():
 
 def create_conditions(args, FLAGS):
     binary_filelist = None
-    batch_size = 1
+    # batch_size = 1
+    batch_size = 32
     max_steps = 1071
     run_all = False
 
@@ -232,7 +233,8 @@ def create_conditions(args, FLAGS):
             binary_filelist = FLAGS.test_binaries
         else:
             binary_filelist = FLAGS.reduced_test_binaries
-        max_steps = 107
+        # max_steps = 107
+        max_steps = 4
     else:
         if args.model == 'ae':
             binary_filelist = FLAGS.ae_all_binaries
@@ -247,7 +249,7 @@ def create_conditions(args, FLAGS):
 def setup_checkpoint(train, sess, saver, directory, overrideChkpt):
     ckpt = tf.train.get_checkpoint_state(directory)
     if train:
-        # Get checkpoint at step: i_stopped
+        Get checkpoint at step: i_stopped
         if (not overrideChkpt) and ckpt and ckpt.model_checkpoint_path:
             saver.restore(sess, ckpt.model_checkpoint_path)
             print("Fetching checkpoint data from:")
@@ -265,6 +267,8 @@ def setup_checkpoint(train, sess, saver, directory, overrideChkpt):
         if ckpt and ckpt.model_checkpoint_path:
             saver.restore(sess, ckpt.model_checkpoint_path)
             print(ckpt.model_checkpoint_path)
+
+        # saver.restore(sess, '/data/ckpt/model.ckpt-2000')
         i_stopped = 0
 
     return i_stopped
