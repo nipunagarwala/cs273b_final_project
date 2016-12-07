@@ -1,4 +1,5 @@
 from operator import truediv
+from utils_visual import *
 
 import numpy as np
 import csv
@@ -192,6 +193,18 @@ def loadROI_All():
         covData = loadROI(i)
         if covData is not None:
             np.save('./ROI/'+str(i), covData)
+
+def bin2npy(dirName='/data/binaries_reduced'):
+    LABEL_SZ = 1
+    PHENO_SZ = 29
+    X_SZ = 31
+    Y_SZ = 37
+    Z_SZ = 31
+    for filename in os.listdir(dirName):
+        print os.path.join(dirName,filename)
+        brain = np.memmap(filename=os.path.join(dirName,filename), dtype='float32', 
+                          mode='r', offset=(LABEL_SZ+PHENO_SZ)*4, shape=(X_SZ,Y_SZ,Z_SZ))
+        np.save(os.path.join('/data/binaries_reduced_npy/',filename), brain)
 
 def extract_parser():
     parser = argparse.ArgumentParser(description='Evaluation procedure for Salami CNN.')
