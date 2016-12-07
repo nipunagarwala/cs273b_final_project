@@ -5,7 +5,8 @@ import csv
 
 
 BRAIN_DIR = os.path.abspath('/data/originalfALFFData')
-PHENOTYPE_FILE = os.path.abspath('/data/processed_imputed_phenotype_data.csv')
+# PHENOTYPE_FILE = os.path.abspath('/data/processed_imputed_phenotype_data.csv')
+PHENOTYPE_FILE = os.path.abspath('/data/normalized_processed_imputed_phenotype_data.csv')
 # OUTPUT_DIR = os.path.abspath('/data/binaries')
 OUTPUT_DIR = os.path.abspath('/data/binaries_new')
 # ALL_FILES = os.path.abspath('/data/brain_binary_list.json')
