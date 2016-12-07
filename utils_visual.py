@@ -63,7 +63,6 @@ def print_hdf5Files(h5filename):
 #print_hdf5Files('example2_weights.hdf5')
 
 def saveWeights(metafile, chkptfile, h5filename, weight_names_tf):
-    import tensorflow as tf
     # load the checkpointed session
     sess = tf.Session()
     new_saver = tf.train.import_meta_graph(metafile)
@@ -273,7 +272,6 @@ from __future__ import unicode_literals
 import copy
 import itertools
 import multiprocessing as mp
-from utils_visual import *
 
 CLASS_NUM = 2
 
