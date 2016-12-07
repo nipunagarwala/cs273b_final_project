@@ -146,7 +146,7 @@ CNN_BETA_2 = 0.2
 
 # Phenotype Neural Network (NN)
 # Must always end with a 1, to allow for logistic classification
-NN_HIDDEN_UNITS = [32, 32, 32, 32, 16, 16, 16, 8, 1]
+NN_HIDDEN_UNITS = [32, 32, 32, 32, 16, 16, 16, 8, 2] # [32, 16, 2]
 
 # Layer to be fed into Multi-Modal NN, 1-indexed
 # Ex.

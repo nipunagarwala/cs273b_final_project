@@ -23,7 +23,7 @@ class NeuralNetwork(CNNLayers):
         self.b_lmbda = b_lmbda
         self.op = op
 
-    def build_model(self, num_layers, hidden_units, sigmoid=True,batch_norm=True, in_multiModal=True):
+    def build_model(self, num_layers, hidden_units, sigmoid=True, batch_norm=True, in_multiModal=True):
         weights = {}
         layersOut = {}
         biases = {}
@@ -33,15 +33,14 @@ class NeuralNetwork(CNNLayers):
         prev_layer = self.input_data
 
         prev_shape = (prev_layer.get_shape().as_list())[1]
-        for i in range(num_layers):
+        for i in range(num_layers-1):
             layersOut['layer'+str(i+1)] ,weights['w'+str(i+1)], biases['w'+str(i+1)] = self.fcLayer(prev_layer, [prev_shape, hidden_units[i]], sigmoid, batch_norm)
             prev_shape = hidden_units[i]
             prev_layer = layersOut['layer'+str(i+1)]
 
-        if not sigmoid:
-            prev_layer = self.sigmoid(prev_layer)
-
-        layersOut['pred'] = prev_layer
+        layersOut['layer'+str(num_layers)] ,weights['w'+str(num_layers)], biases['w'+str(num_layers)] = self.fcLayer(prev_layer, [prev_shape, hidden_units[num_layers-1]], False, False)
+        layersOut['output'] = layersOut['layer'+str(num_layers)]
+        layersOut['pred'] = tf.nn.softmax(layersOut['output'], dim=-1, name=None)
         layersOut['fc-mmnn'] = layersOut['layer'+str(in_multiModal)]
 
         self.layersOut = layersOut
@@ -51,7 +50,7 @@ class NeuralNetwork(CNNLayers):
         return layersOut, weights
 
     def train(self, nn_reg_on, nn_reg_op):
-        cost = self.cost_function(self.layersOut['pred'], self.output, op='sigmoid')
+        cost = self.cost_function(self.layersOut['output'], self.output, op='log-likelihood')
         cumCost = cost
         numEntries = len(self.weights)
 

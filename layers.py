@@ -85,6 +85,16 @@ class Layers(object):
             # Create logit of output
             output_logit = tf.log(output / (1 - output))
             cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(model_output , Yint))
+        elif op == 'log-likelihood':
+            Y_control = tf.ones_like(Y) - Y
+            Y_full = tf.concat(1, [Y_control, Y])
+            epsilon = 10e-6
+            prob = tf.nn.softmax(model_output, dim=-1, name=None)
+            actionLabels = tf.mul(prob, Y_full)
+            sumRes = tf.reduce_sum(actionLabels, 1)
+            actionLikelihood = tf.clip_by_value( tf.log(sumRes), -1e4, 1000)
+            actionLikelihood = tf.reduce_mean(actionLikelihood)
+            cost = -actionLikelihood
 
         return cost
 
