@@ -415,8 +415,9 @@ class MultiModalNN(CNNLayers):
             prev_shape = hidden_units[i]
             prev_layer = layersOut['layer'+str(i+1)]
 
-        layersOut['pred'] = self.sigmoid(prev_layer)
-        layersOut['pred'] = tf.reshape(layersOut['pred'], [1,self.batch_size], name=None)
+        layersOut['output_values'] = prev_layer
+        layersOut['pred'] = tf.nn.softmax(layersOut['output_values'], dim=-1, name=None)
+        # layersOut['pred'] = tf.reshape(layersOut['pred'], [1,self.batch_size], name=None)
 
         self.layersOut = layersOut
         self.weights = weights
@@ -425,7 +426,7 @@ class MultiModalNN(CNNLayers):
         return layersOut, weights
 
     def train(self):
-        cost = self.cost_function(self.layersOut['pred'], self.output, op='sigmoid')
+        cost = self.cost_function(self.layersOut['pred'], self.output, op='log-likelihood')
         cumCost = cost
         numEntries = len(self.weights)
 

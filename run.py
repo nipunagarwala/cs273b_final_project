@@ -192,7 +192,7 @@ def createVanillaNN(data, output, p_keep_conv,batch_size, multiModal=False):
     regConstants = NN_REG_CONSTANTS_WEIGHTS
     hidden_units = NN_HIDDEN_UNITS
 
-    print("Creating the Vannil Neural Network Object")
+    print("Creating the Vanilla Neural Network Object")
 
     deepNN = NeuralNetwork(data, output, p_keep_conv, batch_size,
                             learning_rate, beta1, beta2, w_lmbda=regConstants, b_lmbda = NN_REG_CONSTANTS_BIAS, op=op)
@@ -300,43 +300,19 @@ def run_model(train, model, binary_filelist, run_all, batch_size, max_steps, ove
                     loss = sess.run(cost)
             else:
                 if train:
-                    if model == "nn" or model == "cnn":
-                        _, pred, loss, targ = sess.run([train_op, layer_outputs['pred'], cost, output])
-                        print "Prediction Probabilities are: " + str(pred)
-                        predictions = np.argmax(pred, axis=1)
-                        targets = targ.flatten()
-                        print "Predictions are: " + str(predictions)
-                        print "Target are: " + str(targets)
-                        compute_statistics(targets, predictions)
-                    else:
-                        _, pred, loss, targ = sess.run([train_op, layer_outputs['pred'], cost, output])
-                        print "Prediction Probabilities are: " + str(pred.flatten())
-                        predictions = np.around(pred).flatten()
-                        targets = targ.flatten()
-                        print "Predictions are: " + str(predictions)
-                        print "Target are: " + str(targets)
-                        compute_statistics(targets, predictions)
+                    _, pred, loss, targ = sess.run([train_op, layer_outputs['pred'], cost, output])
+                    print "Prediction Probabilities are: " + str(pred)
+                    predictions = np.argmax(pred, axis=1)
+                    targets = targ.flatten()
+                    print "Predictions are: " + str(predictions)
+                    print "Target are: " + str(targets)
+                    compute_statistics(targets, predictions)
                 else:
-                    if model == "nn" or model == "cnn":
-                        pred, loss, targ = sess.run([layer_outputs['pred'], cost, output])
-                        print "Prediction Probabilities are: " + str(pred)
-                        predictions.extend(np.argmax(pred, axis=1).flatten().tolist())
-                        targets.extend(targ.flatten().tolist())
-                    else:
-                        pred, loss, targ = sess.run([layer_outputs['pred'], cost, output])
-                        print "Prediction Probabilities are: " + str(pred)
-                        # # Code below is used for single predictions, but currently not working
-                        # print "Prediction Probability: " + str(pred[0][0])
-                        # pred = round(pred[0][0])
-                        # targ = targ[0]
-                        # print "Prediction is: " + str(pred)
-                        # print "Target is: " + str(targ)
-                        # predictions.append(pred)
-                        # targets.append(targ)
-                        predictions.extend(np.around(pred).flatten().tolist())
-                        targets.extend(targ.flatten().tolist())
+                    pred, loss, targ = sess.run([layer_outputs['pred'], cost, output])
+                    print "Prediction Probabilities are: " + str(pred)
+                    predictions.extend(np.argmax(pred, axis=1).flatten().tolist())
+                    targets.extend(targ.flatten().tolist())
             print("The current loss is: " + str(loss))
-            # print("Current predicted labels are: " + str(layer_outputs['pred'].eval()))
 
             # Checkpoint model at each 100 iterations
             should_save = i != 0 and i % 100 == 0 or (i+1) == max_steps
