@@ -1,5 +1,5 @@
+# from utils_visual import *
 from operator import truediv
-from utils_visual import *
 
 import numpy as np
 import csv
@@ -202,7 +202,7 @@ def bin2npy(dirName='/data/binaries_reduced'):
     Z_SZ = 31
     for filename in os.listdir(dirName):
         print os.path.join(dirName,filename)
-        brain = np.memmap(filename=os.path.join(dirName,filename), dtype='float32', 
+        brain = np.memmap(filename=os.path.join(dirName,filename), dtype='float32',
                           mode='r', offset=(LABEL_SZ+PHENO_SZ)*4, shape=(X_SZ,Y_SZ,Z_SZ))
         np.save(os.path.join('/data/binaries_reduced_npy/',filename), brain)
 
@@ -282,7 +282,7 @@ def setup_checkpoint(train, sess, saver, directory, overrideChkpt):
             saver.restore(sess, ckpt.model_checkpoint_path)
             print(ckpt.model_checkpoint_path)
 
-        # saver.restore(sess, '/data/ckpt/model.ckpt-2000')
+        # saver.restore(sess, '/data/ckpt/model.ckpt-1000')
         i_stopped = 0
 
     return i_stopped

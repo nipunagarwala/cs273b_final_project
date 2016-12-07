@@ -300,7 +300,7 @@ def run_model(train, model, binary_filelist, run_all, batch_size, max_steps, ove
                     loss = sess.run(cost)
             else:
                 if train:
-                    if model == "nn":
+                    if model == "nn" or model == "cnn":
                         _, pred, loss, targ = sess.run([train_op, layer_outputs['pred'], cost, output])
                         print "Prediction Probabilities are: " + str(pred)
                         predictions = np.argmax(pred, axis=1)
@@ -317,7 +317,7 @@ def run_model(train, model, binary_filelist, run_all, batch_size, max_steps, ove
                         print "Target are: " + str(targets)
                         compute_statistics(targets, predictions)
                 else:
-                    if model == "nn":
+                    if model == "nn" or model == "cnn":
                         pred, loss, targ = sess.run([layer_outputs['pred'], cost, output])
                         print "Prediction Probabilities are: " + str(pred)
                         predictions.extend(np.argmax(pred, axis=1).flatten().tolist())
@@ -339,7 +339,7 @@ def run_model(train, model, binary_filelist, run_all, batch_size, max_steps, ove
             # print("Current predicted labels are: " + str(layer_outputs['pred'].eval()))
 
             # Checkpoint model at each 100 iterations
-            should_save = i != 0 and i % 1000 == 0 or (i+1) == max_steps
+            should_save = i != 0 and i % 100 == 0 or (i+1) == max_steps
             if should_save and train:
                 checkpoint_path = os.path.join(FLAGS.checkpoint_dir, 'model.ckpt')
                 saver.save(sess, checkpoint_path, global_step=i)

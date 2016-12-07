@@ -124,7 +124,7 @@ CNN_REG_OP = 'l2'
 CNN_RHO = 0.7
 
 # Learning rate for backpropogation
-CNN_LEARNING_RATE = 0.001
+CNN_LEARNING_RATE = 0.0001#0.001
 
 # apply batch norm or not
 CNN_BATCH_NORM = True
@@ -146,18 +146,18 @@ CNN_BETA_2 = 0.2
 
 # Phenotype Neural Network (NN)
 # Must always end with a 1, to allow for logistic classification
-NN_HIDDEN_UNITS = [32, 32, 32, 32, 16, 16, 16, 8, 2] # [32, 16, 2]
+NN_HIDDEN_UNITS = [32, 16, 2] # [32, 32, 32, 32, 16, 16, 16, 8, 2]
 
 # Layer to be fed into Multi-Modal NN, 1-indexed
 # Ex.
 # NN_HIDDEN_UNITS = [16, 64, 64, 32, 1], NN_MMLAYER = 4
 # 	-> the layer with hidden nodes 32 (the 4th layer) will be fed into MMNN
-NN_MMLAYER = 4
+NN_MMLAYER = 2 # 4
 
 NN_REG_CONSTANTS_WEIGHTS =[0.6]*len(NN_HIDDEN_UNITS)
 NN_REG_CONSTANTS_BIAS = [0.9]*len(NN_HIDDEN_UNITS)
 
-NN_LEARNING_RATE = 0.001
+NN_LEARNING_RATE = 0.0001 #0.001
 NN_REG_ON = False
 NN_REG_OP = 'l2'
 
