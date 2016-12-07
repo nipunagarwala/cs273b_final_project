@@ -51,7 +51,7 @@ class NeuralNetwork(CNNLayers):
         return layersOut, weights
 
     def train(self, nn_reg_on, nn_reg_op):
-        cost = self.cost_function(self.layersOut['pred'], self.output, op='softmax')
+        cost = self.cost_function(self.layersOut['pred'], self.output, op='sigmoid')
         cumCost = cost
         numEntries = len(self.weights)
 
@@ -464,4 +464,3 @@ class ResidualNet(CNNLayers):
 
         layersOut['input'] = self.input_image
         layersOut['output'] = self.output
-
