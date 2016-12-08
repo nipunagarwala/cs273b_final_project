@@ -29,13 +29,13 @@ tf.app.flags.DEFINE_string('all_binaries', '/data/all.json',
                            """File containing list of all the binary filenames """)
 
 # Convolutional Auto Encoder compressed files
-tf.app.flags.DEFINE_string('reduced_dir', '/data/binaries_reduced',
+tf.app.flags.DEFINE_string('reduced_dir', '/data/binaries_reduced2',
                            """File containing list of all the binary filenames """)
-tf.app.flags.DEFINE_string('reduced_train_binaries', '/data/reduced_train.json',
+tf.app.flags.DEFINE_string('reduced_train_binaries', '/data/reduced_train2.json',
                            """File containing list of binary filenames used for training """)
-tf.app.flags.DEFINE_string('reduced_test_binaries', '/data/reduced_test.json',
+tf.app.flags.DEFINE_string('reduced_test_binaries', '/data/reduced_test2.json',
                            """File containing list of binary filenames used for testing """)
-tf.app.flags.DEFINE_string('reduced_all_binaries', '/data/reduced_all.json',
+tf.app.flags.DEFINE_string('reduced_all_binaries', '/data/reduced_all2.json',
                            """File containing list of all the binary filenames """)
 
 # Run Model flags
