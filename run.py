@@ -192,7 +192,7 @@ def createVanillaNN(data, output, p_keep_conv,batch_size, multiModal=False):
     regConstants = NN_REG_CONSTANTS_WEIGHTS
     hidden_units = NN_HIDDEN_UNITS
 
-    print("Creating the Vannil Neural Network Object")
+    print("Creating the Vanilla Neural Network Object")
 
     deepNN = NeuralNetwork(data, output, p_keep_conv, batch_size,
                             learning_rate, beta1, beta2, w_lmbda=regConstants, b_lmbda = NN_REG_CONSTANTS_BIAS, op=op)
@@ -273,96 +273,96 @@ def run_model(train, model, binary_filelist, run_all, batch_size, max_steps, ove
     print("Using the following input dimensions: " + str(input_dimensions))
     print("Created the entire model! YAY!")
 
-    # Create a saver
-    saver = tf.train.Saver(tf.all_variables(), max_to_keep=50)
+    ckpt = tf.train.get_checkpoint_state(FLAGS.checkpoint_dir)
+    if train:
+        ckpt_list = [ckpt.model_checkpoint_path if ckpt else None]
+    else:
+        ckpt_list = ckpt.all_model_checkpoint_paths
+    print ckpt_list
 
-    # Launch the graph in a session
-    with tf.Session() as sess:
+    for ckpt_file in ckpt_list:
+        # Launch the graph in a session
+        with tf.Session() as sess:
+            # Create a saver
+            saver = tf.train.Saver(tf.all_variables(), max_to_keep=100)
 
-        if train:
-            init_op = tf.group(tf.initialize_all_variables(), tf.initialize_local_variables())
-            init_op.run()
+            if train:
+                init_op = tf.group(tf.initialize_all_variables(), tf.initialize_local_variables())
+                init_op.run()
 
-        coord = tf.train.Coordinator()
-        tf.train.start_queue_runners(coord=coord, sess=sess)
+            coord = tf.train.Coordinator()
+            tf.train.start_queue_runners(coord=coord, sess=sess)
 
-        i_stopped = setup_checkpoint(train, sess, saver, FLAGS.checkpoint_dir, overrideChkpt)
+            ckpt = tf.train.get_checkpoint_state(FLAGS.checkpoint_dir)
 
-        compressed_filelist = []
-        predictions = []
-        targets = []
-        for i in range(i_stopped, max_steps):
-            print("Running iteration {} of TF Session".format(i))
-            if model == 'cae' or model == 'ae':
-                if train:
-                    _, loss = sess.run([train_op, cost])
+            i_stopped = setup_checkpoint(train, sess, saver, ckpt, str(ckpt_file), overrideChkpt)
+
+            compressed_filelist = []
+            predictions = []
+            targets = []
+            for i in range(i_stopped, max_steps):
+                print("Running iteration {} of TF Session".format(i))
+                if model == 'cae' or model == 'ae':
+                    if train:
+                        _, loss = sess.run([train_op, cost])
+                    else:
+                        loss = sess.run(cost)
                 else:
-                    loss = sess.run(cost)
-            else:
-                if train:
-                    _, pred, loss, targ = sess.run([train_op, layer_outputs['pred'], cost, output])
-                    print "Prediction Probabilities are: " + str(pred.flatten())
-                    predictions = np.around(pred).flatten()
-                    targets = targ.flatten()
-                    print "Predictions are: " + str(predictions)
-                    print "Target are: " + str(targets)
-                    compute_statistics(targets, predictions)
-                else:
-                    pred, loss, targ = sess.run([layer_outputs['pred'], cost, output])
-                    print pred
-                    # # Code below is used for single predictions, but currently not working
-                    # print "Prediction Probability: " + str(pred[0][0])
-                    # pred = round(pred[0][0])
-                    # targ = targ[0]
-                    # print "Prediction is: " + str(pred)
-                    # print "Target is: " + str(targ)
-                    # predictions.append(pred)
-                    # targets.append(targ)
-                    predictions.extend(np.around(pred).flatten().tolist())
-                    targets.extend(targ.flatten().tolist())
-            print("The current loss is: " + str(loss))
-            # print("Current predicted labels are: " + str(layer_outputs['pred'].eval()))
+                    if train:
+                        _, pred, loss, targ = sess.run([train_op, layer_outputs['pred'], cost, output])
+                        print "Prediction Probabilities are: " + str(pred)
+                        predictions = np.argmax(pred, axis=1)
+                        targets = targ.flatten()
+                        print "Predictions are: " + str(predictions)
+                        print "Target are: " + str(targets)
+                        compute_statistics(targets, predictions)
+                    else:
+                        pred, loss, targ = sess.run([layer_outputs['pred'], cost, output])
+                        print "Prediction Probabilities are: " + str(pred)
+                        predictions.extend(np.argmax(pred, axis=1).flatten().tolist())
+                        targets.extend(targ.flatten().tolist())
+                print("The current loss is: " + str(loss))
 
-            # Checkpoint model at each 100 iterations
-            should_save = i != 0 and i % 1000 == 0 or (i+1) == max_steps
-            if should_save and train:
-                checkpoint_path = os.path.join(FLAGS.checkpoint_dir, 'model.ckpt')
-                saver.save(sess, checkpoint_path, global_step=i)
+                # Checkpoint model at each 100 iterations
+                should_save = i != 0 and i % 1000 == 0 or (i+1) == max_steps
+                if should_save and train:
+                    checkpoint_path = os.path.join(FLAGS.checkpoint_dir, 'model.ckpt')
+                    saver.save(sess, checkpoint_path, global_step=i)
 
-            # If running all files for CAE
-            if not train and run_all and model == 'cae':
-                bin_path = create_CEA_reduced_binary(sess, encode, output,
-                                                    data, FLAGS, i)
-                compressed_filelist.append(bin_path)
+                # If running all files for CAE
+                if not train and run_all and model == 'cae':
+                    bin_path = create_CEA_reduced_binary(sess, encode, output,
+                                                        data, FLAGS, i)
+                    compressed_filelist.append(bin_path)
 
-        coord.request_stop()
-        coord.join(stop_grace_period_secs=10)
+            coord.request_stop()
+            coord.join(stop_grace_period_secs=10)
 
-        if not train and model != 'cae' and model != 'ae':
-            predictions = predictions[:107]
-            targets = targets[:107]
-            print predictions
-            print targets
-            conf_matrix, accuracy, recall, precision, f_score = compute_statistics(targets, predictions)
-            plot_confusion_matrix(conf_matrix)
-            const_dict = create_constants_dictionary()
-            const_dict['1-Accuracy'] = accuracy
-            const_dict['2-Recall'] = recall
-            const_dict['3-Precison'] = precision
-            const_dict['4-F-score'] = f_score
+            if not train and model != 'cae' and model != 'ae':
+                predictions = predictions[:107]
+                targets = targets[:107]
+                print predictions
+                print targets
+                conf_matrix, accuracy, recall, precision, f_score = compute_statistics(targets, predictions)
+                plot_confusion_matrix(conf_matrix)
+                const_dict = create_constants_dictionary()
+                const_dict['1-Accuracy'] = accuracy
+                const_dict['2-Recall'] = recall
+                const_dict['3-Precison'] = precision
+                const_dict['4-F-score'] = f_score
 
-            now = datetime.datetime.now()
-            filename = now.strftime("%m-%d-%Y_%H:%M") + "_" + model + ".json"
-            with open(filename, 'w') as const_out:
-                json.dump(const_dict, const_out, sort_keys=True, indent=4, ensure_ascii=False)
+                now = datetime.datetime.now()
+                filename = now.strftime("%m-%d-%Y_%H:%M") + "_" + model + "_" + ckpt_file.split('/')[-1].split('-')[-1] + ".json"
+                with open(filename, 'w') as const_out:
+                    json.dump(const_dict, const_out, sort_keys=True, indent=4, ensure_ascii=False)
 
 
-        # CAE/AE Output
-        if model == 'ae':
-            pass
-        elif model == 'cae':
-            generate_CAE_output(train, run_all, sess, encode, decode, brain_image,
-                            compressed_filelist, output_binary_filelist, FLAGS)
+            # CAE/AE Output
+            if model == 'ae':
+                pass
+            elif model == 'cae':
+                generate_CAE_output(train, run_all, sess, encode, decode, brain_image,
+                                compressed_filelist, output_binary_filelist, FLAGS)
 
 
 

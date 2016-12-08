@@ -23,7 +23,7 @@ class NeuralNetwork(CNNLayers):
         self.b_lmbda = b_lmbda
         self.op = op
 
-    def build_model(self, num_layers, hidden_units, sigmoid=True,batch_norm=True, in_multiModal=True):
+    def build_model(self, num_layers, hidden_units, sigmoid=True, batch_norm=True, in_multiModal=True):
         weights = {}
         layersOut = {}
         biases = {}
@@ -33,15 +33,14 @@ class NeuralNetwork(CNNLayers):
         prev_layer = self.input_data
 
         prev_shape = (prev_layer.get_shape().as_list())[1]
-        for i in range(num_layers):
+        for i in range(num_layers-1):
             layersOut['layer'+str(i+1)] ,weights['w'+str(i+1)], biases['w'+str(i+1)] = self.fcLayer(prev_layer, [prev_shape, hidden_units[i]], sigmoid, batch_norm)
             prev_shape = hidden_units[i]
             prev_layer = layersOut['layer'+str(i+1)]
 
-        if not sigmoid:
-            prev_layer = self.sigmoid(prev_layer)
-
-        layersOut['pred'] = prev_layer
+        layersOut['layer'+str(num_layers)] ,weights['w'+str(num_layers)], biases['w'+str(num_layers)] = self.fcLayer(prev_layer, [prev_shape, hidden_units[num_layers-1]], False, False)
+        layersOut['output_values'] = layersOut['layer'+str(num_layers)]
+        layersOut['pred'] = tf.nn.softmax(layersOut['output_values'], dim=-1, name=None)
         layersOut['fc-mmnn'] = layersOut['layer'+str(in_multiModal)]
 
         self.layersOut = layersOut
@@ -51,7 +50,7 @@ class NeuralNetwork(CNNLayers):
         return layersOut, weights
 
     def train(self, nn_reg_on, nn_reg_op):
-        cost = self.cost_function(self.layersOut['pred'], self.output, op='sigmoid')
+        cost = self.cost_function(self.layersOut['output_values'], self.output, op='log-likelihood')
         cumCost = cost
         numEntries = len(self.weights)
 
@@ -222,6 +221,7 @@ class ConvNN(CNNLayers):
         CNNLayers.__init__(self)
         self.input_image = image
         self.output = output
+        self.output = tf.reshape(self.output, [batch_size,1 ], name=None)
         self.dropout = p_keep_conv
         self.batch_size = batch_size
         self.learning_rate = learning_rate
@@ -230,7 +230,7 @@ class ConvNN(CNNLayers):
         self.b_lmbda = b_lmbda
         self.w_lmbda = w_lmbda
         self.op = op
-        self.output = tf.reshape(self.output, [1,self.batch_size], name=None)
+        # self.output = tf.reshape(self.output, [1,self.batch_size], name=None)
 
     # def build_model(self, sigmoid, batch_norm):
     #     weights = {}
@@ -333,10 +333,11 @@ class ConvNN(CNNLayers):
 
             if conv_arch[i] == 'fc':
                 in_weights = self.cnn_out_params
-                out_weights =  self.cnn_out_params if (num_fc_done < cnn_num_fc_layers-1) else 1
+                out_weights =  self.cnn_out_params if (num_fc_done < cnn_num_fc_layers-1) else 2
                 sigm = True if (num_fc_done < cnn_num_fc_layers-1) else False
+                batchn = True if (num_fc_done < cnn_num_fc_layers-1) else False
                 layersOut['layer'+str(i+1)] ,weights['w'+str(i+1)], biases['b'+str(i+1)] = self.fcLayer(prev_layer,
-                                                    [in_weights , out_weights], sigm, True)
+                                                    [in_weights , out_weights], sigm, batchn)
                 num_fc_done += 1
                 print("This is the FC NN Layer")
                 print("This is the shape of the outputs of this layer: " + str(layersOut['layer'+str(i+1)].get_shape().as_list()))
@@ -347,9 +348,10 @@ class ConvNN(CNNLayers):
             layer_counter += 1
 
             if layer_counter == cnn_num_layers:
-                layersOut['pred']  = self.sigmoid(layersOut['layer'+str(layer_counter)])
+                layersOut['output_values'] = layersOut['layer'+str(layer_counter)]
+                # layersOut['output_values'] = tf.reshape(layersOut['output_values'], [out_weights, self.batch_size], name=None)
+                layersOut['pred'] = tf.nn.softmax(layersOut['output_values'], dim=-1, name=None)
                 # layersOut['pred'] = tf.transpose(layersOut['pred'], perm=None, name='transpose')
-                layersOut['pred'] = tf.reshape(layersOut['pred'], [1,self.batch_size], name=None)
                 break
 
 
@@ -361,7 +363,7 @@ class ConvNN(CNNLayers):
 
 
     def train(self, cnn_reg_on, cnn_reg_op):
-        cost = self.cost_function( self.layersOut['pred'], self.output, op='sigmoid')
+        cost = self.cost_function( self.layersOut['output_values'], self.output, op='log-likelihood')
         cumCost = cost
         numEntries = len(self.weights)
 
@@ -413,8 +415,9 @@ class MultiModalNN(CNNLayers):
             prev_shape = hidden_units[i]
             prev_layer = layersOut['layer'+str(i+1)]
 
-        layersOut['pred'] = self.sigmoid(prev_layer)
-        layersOut['pred'] = tf.reshape(layersOut['pred'], [1,self.batch_size], name=None)
+        layersOut['output_values'] = prev_layer
+        layersOut['pred'] = tf.nn.softmax(layersOut['output_values'], dim=-1, name=None)
+        # layersOut['pred'] = tf.reshape(layersOut['pred'], [1,self.batch_size], name=None)
 
         self.layersOut = layersOut
         self.weights = weights
@@ -423,7 +426,7 @@ class MultiModalNN(CNNLayers):
         return layersOut, weights
 
     def train(self):
-        cost = self.cost_function(self.layersOut['pred'], self.output, op='sigmoid')
+        cost = self.cost_function(self.layersOut['pred'], self.output, op='log-likelihood')
         cumCost = cost
         numEntries = len(self.weights)
 
