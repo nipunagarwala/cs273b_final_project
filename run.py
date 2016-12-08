@@ -50,7 +50,10 @@ def createVariables(train, binary_filelist, batch_size, input_dimensions):
     # data_list: Path of a file containing a list of all binary data file paths
     # batch_size: int
     p_keep_conv = tf.placeholder(tf.float32)
-    X_image, X_data, Y = inputs(train, binary_filelist, batch_size, input_dimensions)
+    if train:
+        X_image, X_data, Y = distorted_inputs(train, binary_filelist, batch_size, input_dimensions)
+    else:
+        X_image, X_data, Y = inputs(train, binary_filelist, batch_size, input_dimensions)
     return X_image, X_data, Y, p_keep_conv
 
 
@@ -324,7 +327,7 @@ def run_model(train, model, binary_filelist, run_all, batch_size, max_steps, ove
                 print("The current loss is: " + str(loss))
 
                 # Checkpoint model at each 100 iterations
-                should_save = i != 0 and i % 1000 == 0 or (i+1) == max_steps
+                should_save = i != 0 and i % 100 == 0 or (i+1) == max_steps
                 if should_save and train:
                     checkpoint_path = os.path.join(FLAGS.checkpoint_dir, 'model.ckpt')
                     saver.save(sess, checkpoint_path, global_step=i)
