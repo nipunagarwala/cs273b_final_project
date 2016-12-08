@@ -79,12 +79,9 @@ class Layers(object):
             # Reshape for comparison
             cost = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(output_logit, Y))
         elif op == 'softmax':
-            Yint = tf.to_int32(Y, name='ToInt64')
-            epsilon = 10e-6
-            output = tf.clip_by_value(model_output, epsilon, 1 - epsilon)
-            # Create logit of output
-            output_logit = tf.log(output / (1 - output))
-            cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(model_output , Yint))
+            Y_control = tf.ones_like(Y) - Y
+            Y_full = tf.concat(1, [Y_control, Y])
+            cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(model_output , Y_full))
         elif op == 'log-likelihood':
             Y_control = tf.ones_like(Y) - Y
             Y_full = tf.concat(1, [Y_control, Y])

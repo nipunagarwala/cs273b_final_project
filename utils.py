@@ -14,6 +14,7 @@ import create_brain_binaries
 import tensorflow as tf
 from sklearn.metrics import confusion_matrix
 
+
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 BRAIN_SZ = (91,109,91)
@@ -260,15 +261,14 @@ def create_conditions(args, FLAGS):
 
     return binary_filelist, batch_size, max_steps, run_all
 
-def setup_checkpoint(train, sess, saver, directory, overrideChkpt):
-    ckpt = tf.train.get_checkpoint_state(directory)
+def setup_checkpoint(train, sess, saver, ckpt, ckpt_file, overrideChkpt):
     if train:
         # Get checkpoint at step: i_stopped
-        if (not overrideChkpt) and ckpt and ckpt.model_checkpoint_path:
-            saver.restore(sess, ckpt.model_checkpoint_path)
+        if (not overrideChkpt) and ckpt and ckpt_file:
+            saver.restore(sess, ckpt_file)
             print("Fetching checkpoint data from:")
-            print(ckpt.model_checkpoint_path)
-            i_stopped = int(ckpt.model_checkpoint_path.split('/')[-1].split('-')[-1])
+            print(ckpt_file)
+            i_stopped = int(ckpt_file.split('/')[-1].split('-')[-1])
         elif overrideChkpt:
             print('Overriding the checkpoints!')
             i_stopped = 0
@@ -278,11 +278,9 @@ def setup_checkpoint(train, sess, saver, directory, overrideChkpt):
 
     else: # testing (or running all files)
         # Get most recent checkpoint & start from beginning
-        if ckpt and ckpt.model_checkpoint_path:
-            saver.restore(sess, ckpt.model_checkpoint_path)
-            print(ckpt.model_checkpoint_path)
-
-        # saver.restore(sess, '/data/ckpt/model.ckpt-1000')
+        if ckpt and ckpt_file:
+            saver.restore(sess, ckpt_file)
+            print(ckpt_file)
         i_stopped = 0
 
     return i_stopped
