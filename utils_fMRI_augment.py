@@ -274,4 +274,33 @@ def executeAugFunc(func, mapList):
     p = Pool(8)
     p.map(func, mapList)
 
-executeAugFunc(augmentPatchworkWorker,list(range(5000)))
+#executeAugFunc(augmentPatchworkWorker,list(range(5000)))
+
+def autismVScontrol():
+    autistic,control = getGroupLabels()
+    a1 = random.choice(autistic)
+    a2 = random.choice(autistic)
+    c1 = random.choice(control)
+    c2 = random.choice(control)
+
+    # load the base brain
+    brainDir = '/data/originalfALFFData'
+
+    brainA1 = np.load(os.path.join(brainDir,'original_%d.npy'%a1))
+    brainA2 = np.load(os.path.join(brainDir,'original_%d.npy'%a2))
+    brainC1 = np.load(os.path.join(brainDir,'original_%d.npy'%c1))
+    brainC2 = np.load(os.path.join(brainDir,'original_%d.npy'%c2))
+
+    ran = 0.3
+    mat2visual(brainA1-brainA2,[20,30,40,50,60],'autism_autism.png',[-ran,ran])
+    mat2visual(brainC1-brainC2,[20,30,40,50,60],'control_control.png',[-ran,ran])
+    mat2visual(brainA1-brainC1,[20,30,40,50,60],'control_autism.png',[-ran,ran])
+    mat2visual(brainA1-brainC2,[20,30,40,50,60],'control_autism2.png',[-ran,ran])
+    mat2visual(brainA2-brainC1,[20,30,40,50,60],'control_autism3.png',[-ran,ran])
+    mat2visual(brainA2-brainC2,[20,30,40,50,60],'control_autism4.png',[-ran,ran])
+
+    mat2visual(brainA1,[20,30,40,50,60],'autism1.png')
+    mat2visual(brainA2,[20,30,40,50,60],'autism2.png')
+    mat2visual(brainC1,[20,30,40,50,60],'control1.png')
+    mat2visual(brainC2,[20,30,40,50,60],'control2.png')
+    
