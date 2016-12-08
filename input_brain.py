@@ -12,22 +12,22 @@ CROP = 4
 # Phenotype data is vector of size (29,)
 
 
-def gaussian_noise(image, mean=0.0, stddev=0.25 seed=None):
+def gaussian_noise(image, mean=0.0, stddev=0.25, seed=None):
 	if max_delta < 0:
-    	raise ValueError('max_delta must be non-negative.')
+		raise ValueError('max_delta must be non-negative.')
 
 	delta = tf.truncated_normal([], mean=mean, stddev=stddev, dtype=tf.float32, seed=seed, name=None)
 	with ops.name_scope(None, 'adjust_brightness', [image, delta]) as name:
 		image = ops.convert_to_tensor(image, name='image')
 	    # Remember original dtype to so we can convert back if needed
-	    orig_dtype = image.dtype
-	    flt_image = tf.image.convert_image_dtype(image, dtypes.float32)
+		orig_dtype = image.dtype
+		flt_image = tf.image.convert_image_dtype(image, dtypes.float32)
 
-	    adjusted = tf.add(flt_image,
-	                            math_ops.cast(delta, dtypes.float32),
-	                            name=name)
+		adjusted = tf.add(flt_image,
+		                        math_ops.cast(delta, dtypes.float32),
+		                        name=name)
 
-	    return tf.image.convert_image_dtype(adjusted, orig_dtype, saturate=True)
+		return tf.image.convert_image_dtype(adjusted, orig_dtype, saturate=True)
 
 
 def random_flip_fwd_back(image, seed=None):
