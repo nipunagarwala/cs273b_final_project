@@ -14,18 +14,18 @@ FLAGS = tf.app.flags.FLAGS
 tf.app.flags.DEFINE_string('train_dir', '/data/train',
                            """Directory where to write event logs """)
 
-tf.app.flags.DEFINE_string('ae_train_binaries', '/data/reduced_train.json',
+tf.app.flags.DEFINE_string('ae_train_binaries', '/data/reduced_train2.json',
                            """File containing list of binary filenames used for training """)
-tf.app.flags.DEFINE_string('ae_test_binaries', '/data/reduced_test.json',
+tf.app.flags.DEFINE_string('ae_test_binaries', '/data/reduced_test2.json',
                            """File containing list of binary filenames used for testing """)
-tf.app.flags.DEFINE_string('ae_all_binaries', '/data/reduced_all.json',
+tf.app.flags.DEFINE_string('ae_all_binaries', '/data/reduced_all2.json',
                            """File containing list of all the binary filenames """)
 
-tf.app.flags.DEFINE_string('train_binaries', '/data/train.json',
+tf.app.flags.DEFINE_string('train_binaries', '/data/train2.json',
                            """File containing list of binary filenames used for training """)
-tf.app.flags.DEFINE_string('test_binaries', '/data/test.json',
+tf.app.flags.DEFINE_string('test_binaries', '/data/test2.json',
                            """File containing list of binary filenames used for testing """)
-tf.app.flags.DEFINE_string('all_binaries', '/data/all.json',
+tf.app.flags.DEFINE_string('all_binaries', '/data/all2.json',
                            """File containing list of all the binary filenames """)
 
 # Convolutional Auto Encoder compressed files
