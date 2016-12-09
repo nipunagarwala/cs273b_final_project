@@ -141,23 +141,35 @@ def loadfALFF_All():
         sizeReduction(data, (45, 54, 45), opt=3, poolBox=(2,2,2), filename='pooledData/maxPool_'+str(i)+'_reduce2')
         sizeReduction(data, (30, 36, 30), opt=3, poolBox=(3,3,3), filename='pooledData/maxPool_'+str(i)+'_reduce3')
 
-def reduceHDF5Sz(originalFile):
-    reduxs = [5,8,10]
-    h5Dict = hdf52dict(originalFile)
+def reduceHDF5Sz(patientID):
+    with open('/data/processed_phenotype_data.csv') as csvfile:
+        idd = next(itertools.islice(csv.reader(csvfile), patientID, None))[2]
+
+    fileName = '/data/CS_273B_Final_Project/'+str(idd)+' _data.csv'
+    if not os.path.isfile(fileName):
+        return
+
+    outputPath = '/data/augmented_roi_pooled_%d/%d_roi_pooled_%d.hdf5'
+    roiPath = '/data/augmented_roi_original/%d_roi.hdf5'
+    reduxs = [4,5,6]
+    if os.path.isfile(outputPath % (reduxs[0],patientID,reduxs[0])):
+        return
+
+    h5Dict = hdf52dict(roiPath%patientID)
 
     newH5Dict = {}
     for redux in reduxs:
         newH5Dict[redux] = {}
 
     for key in h5Dict.keys():
-        brain = np.load(h5Dict[key])
+        k = key
+        brain = h5Dict[key]
         for redux in reduxs:
             newSz = [int(round(float(i)/redux)) for i in BRAIN_SZ]
             newH5Dict[redux][key] = sizeReduction(brain, newSz, opt=1, poolBox=(redux,redux,redux))
 
     for redux in reduxs:
-        write2hdf5(os.path.join(originalFile.split('.')[0], '_pool_%d.hdf5'%redux),
-                   newH5Dict[redux], compression='lzf')
+        write2hdf5(outputPath % (redux,patientID,redux), newH5Dict[redux], compression='lzf')
 
 
 def augmentGeoTrans(patientID, originalDir='/data/originalfALFFData', outDir='/data/augmented_geoTrans'):
@@ -354,10 +366,10 @@ def autismVScontrol():
     mat2visual(brainC2,[20,30,40,50,60],'control2.png')
     
 if __name__ == '__main__':
-    func = augmentROI2Brain
+    func = reduceHDF5Sz
     mapList = list(xrange(1,1072))
 
-    p = Pool(8)
+    p = Pool(4)
     p.map(func, mapList)
 
     #executeAugFunc(reduceNpySz,os.listdir('/data/augmented_roi_original'))

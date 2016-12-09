@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 import math
 import argparse
 import create_brain_binaries
-import tensorflow as tf
+#import tensorflow as tf
 from sklearn.metrics import confusion_matrix
 
 
