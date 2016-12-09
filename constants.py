@@ -124,7 +124,7 @@ CNN_REG_OP = 'l2'
 CNN_RHO = 0.7
 
 # Learning rate for backpropogation
-CNN_LEARNING_RATE = 0.0001#0.001
+CNN_LEARNING_RATE = 0.01#0.001
 
 # apply batch norm or not
 CNN_BATCH_NORM = True
