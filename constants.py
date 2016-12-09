@@ -152,7 +152,7 @@ NN_HIDDEN_UNITS = [32, 32, 16, 16, 2] # [32, 32, 32, 32, 16, 16, 16, 8, 2]
 # Ex.
 # NN_HIDDEN_UNITS = [16, 64, 64, 32, 1], NN_MMLAYER = 4
 # 	-> the layer with hidden nodes 32 (the 4th layer) will be fed into MMNN
-NN_MMLAYER = 4 # 4
+NN_MMLAYER = 2 # 4
 
 NN_REG_CONSTANTS_WEIGHTS =[0.6]*len(NN_HIDDEN_UNITS)
 NN_REG_CONSTANTS_BIAS = [0.9]*len(NN_HIDDEN_UNITS)
