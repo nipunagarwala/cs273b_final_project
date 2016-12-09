@@ -13,6 +13,8 @@ import math
 BRAIN_SZ = (91,109,91)
 BRAIN_REGION_SZ = 116
 
+BRAIN_DIR = '/data/originalfALFFData'
+
 def loadfALFF(patientID):
     """
     Converts the fALFF brain readings to a 3D representation in numpy.
@@ -139,6 +141,25 @@ def loadfALFF_All():
         sizeReduction(data, (45, 54, 45), opt=3, poolBox=(2,2,2), filename='pooledData/maxPool_'+str(i)+'_reduce2')
         sizeReduction(data, (30, 36, 30), opt=3, poolBox=(3,3,3), filename='pooledData/maxPool_'+str(i)+'_reduce3')
 
+def reduceHDF5Sz(originalFile):
+    reduxs = [5,8,10]
+    h5Dict = hdf52dict(originalFile)
+
+    newH5Dict = {}
+    for redux in reduxs:
+        newH5Dict[redux] = {}
+
+    for key in h5Dict.keys():
+        brain = np.load(h5Dict[key])
+        for redux in reduxs:
+            newSz = [int(round(float(i)/redux)) for i in BRAIN_SZ]
+            newH5Dict[redux][key] = sizeReduction(brain, newSz, opt=1, poolBox=(redux,redux,redux))
+
+    for redux in reduxs:
+        write2hdf5(os.path.join(originalFile.split('.')[0], '_pool_%d.hdf5'%redux),
+                   newH5Dict[redux], compression='lzf')
+
+
 def augmentGeoTrans(patientID, originalDir='/data/originalfALFFData', outDir='/data/augmented_geoTrans'):
     filepath = os.path.join(originalDir,'original_%d.npy'%patientID)
     brain = np.load(filepath)
@@ -179,6 +200,7 @@ def getBrainRegion(brainDir, patientID, brainRegions, partialBrain=None):
     """
     # if type(partialBrain):
     #     partialBrain = np.zeros(BRAIN_SZ)
+
     # load the base brain
     filepath = os.path.join(brainDir,'original_%d.npy'%patientID)
     brain = np.load(filepath)
@@ -186,29 +208,17 @@ def getBrainRegion(brainDir, patientID, brainRegions, partialBrain=None):
     # find the id of the brainRegion
     brainIDs = brainRegion2brainID(brainRegions)
 
-    # figure out which voxels blong to the brain regions
-    blackOutVoxels = [0]
-    with open('/data/region_code.csv') as csvfile:
-        csvR = csv.reader(csvfile)
-        next(csvR)
-        for row in csvR:
-            if int(row[1]) in brainIDs:
-                blackOutVoxels.append(int(row[0]))
-
-    # figure out where the blackout voxels are located
-    with open('/data/coord.csv') as csvfile:
-        csvR = csv.reader(csvfile)
-        next(csvR)
-        for i in range(len(blackOutVoxels)-1):
-            for j in range(blackOutVoxels[i+1]-blackOutVoxels[i]-1):
-                next(csvR)
-            coord = [int(i) for i in next(csvR)]
-            partialBrain[coord[1]-1, coord[2]-1, coord[3]-1] = brain[coord[1]-1, coord[2]-1, coord[3]-1]
+    index2region = np.load('/data/index2BrainRegion.npy')
+    for x in range(BRAIN_SZ[0]):
+        for y in range(BRAIN_SZ[1]):
+            for z in range(BRAIN_SZ[2]):
+                if index2region[x,y,z] in brainIDs:
+                    partialBrain[x,y,z] = brain[x,y,z]
 
     return partialBrain
 
 def augmentPatchwork(patientID=None, numStealRegions=None, autistic=None, 
-                     brainDir='/data/originalfALFFData', 
+                     brainDir=BRAIN_DIR, 
                      outDir='/data/augmented_geoTrans'):
     autismIDs,controlIDs = getGroupLabels()
 
@@ -269,12 +279,53 @@ def augmentPatchworkPartial():
     p.map(augmentPatchworkPartialWorker,runList)
 
 #augmentPatchworkPartial()
-    
-def executeAugFunc(func, mapList):
-    p = Pool(8)
-    p.map(func, mapList)
 
-#executeAugFunc(augmentPatchworkWorker,list(range(5000)))
+def augmentROI2Brain(patientID):
+    outpath = '/data/augmented_roi_original'
+    with open('/data/processed_phenotype_data.csv') as csvfile:
+        id = next(itertools.islice(csv.reader(csvfile), patientID, None))[2]
+
+    fileName = '/data/CS_273B_Final_Project/'+str(id)+' _data.csv'
+    if not os.path.isfile(fileName) or os.path.isfile(outpath+'/%d_roi.hdf5'%patientID):
+        return
+
+    print patientID
+
+    csvfile = open(fileName, 'rb')
+    csvR = csv.reader(csvfile)
+    next(csvR)
+
+    roiDict = {}
+    for i,row in enumerate(csvR):
+        roiDict['step_%d'%i] = weights2Brain([float(s) for s in row[1:]])
+
+    write2hdf5(os.path.join(outpath,'%d_roi.hdf5'%patientID), roiDict, compression='lzf')
+
+def compressROI(patientID):
+    datapath = '/data/augmented_roi_original'
+
+    with open('/data/processed_phenotype_data.csv') as csvfile:
+        pat_id = next(itertools.islice(csv.reader(csvfile), patientID, None))[2]
+
+    count = 0
+    fileName = '/data/CS_273B_Final_Project/%s _data.csv' %pat_id
+    if not os.path.isfile(fileName):
+        return
+
+    csvfile = open(fileName, 'rb')
+    csvR = csv.reader(csvfile)
+    row_count = sum(1 for row in csvR)-1
+    csvfile.seek(0)
+
+    roiDict = {}
+    for i in range(row_count):
+        npyFile = os.path.join(datapath,'%d_roi_step_%d.npy'%(patientID,i))
+        if not os.path.isfile(npyFile):
+            print 'fail'
+            return
+        roiDict['step_%d'%i] = np.load(npyFile)
+
+    write2hdf5(os.path.join(datapath,'%d_roi.hdf5'%patientID), roiDict, compression='lzf')
 
 def autismVScontrol():
     autistic,control = getGroupLabels()
@@ -284,12 +335,10 @@ def autismVScontrol():
     c2 = random.choice(control)
 
     # load the base brain
-    brainDir = '/data/originalfALFFData'
-
-    brainA1 = np.load(os.path.join(brainDir,'original_%d.npy'%a1))
-    brainA2 = np.load(os.path.join(brainDir,'original_%d.npy'%a2))
-    brainC1 = np.load(os.path.join(brainDir,'original_%d.npy'%c1))
-    brainC2 = np.load(os.path.join(brainDir,'original_%d.npy'%c2))
+    brainA1 = np.load(os.path.join(BRAIN_DIR,'original_%d.npy'%a1))
+    brainA2 = np.load(os.path.join(BRAIN_DIR,'original_%d.npy'%a2))
+    brainC1 = np.load(os.path.join(BRAIN_DIR,'original_%d.npy'%c1))
+    brainC2 = np.load(os.path.join(BRAIN_DIR,'original_%d.npy'%c2))
 
     ran = 0.3
     mat2visual(brainA1-brainA2,[20,30,40,50,60],'autism_autism.png',[-ran,ran])
@@ -304,3 +353,12 @@ def autismVScontrol():
     mat2visual(brainC1,[20,30,40,50,60],'control1.png')
     mat2visual(brainC2,[20,30,40,50,60],'control2.png')
     
+if __name__ == '__main__':
+    func = augmentROI2Brain
+    mapList = list(xrange(1,1072))
+
+    p = Pool(8)
+    p.map(func, mapList)
+
+    #executeAugFunc(reduceNpySz,os.listdir('/data/augmented_roi_original'))
+    #executeAugFunc(augmentROI2Brain,xrange(1,1072))
