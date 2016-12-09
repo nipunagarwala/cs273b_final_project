@@ -159,7 +159,7 @@ NN_REG_CONSTANTS_BIAS = [0.9]*len(NN_HIDDEN_UNITS)
 
 NN_LEARNING_RATE = 0.0001 #0.001
 NN_REG_ON = False
-NN_REG_OP = 'l1'
+NN_REG_OP = 'l2'
 
 # apply batch norm or not
 NN_BATCH_NORM = True
@@ -171,7 +171,7 @@ NN_SIGMOID = True
 NN_OP = 'Rmsprop'
 
 # decay rates for the optimizers
-NN_BETA_1 = 0.99
+NN_BETA_1 = 0.95
 
 # decay rate used by 'adam'
 NN_BETA_2 = None
