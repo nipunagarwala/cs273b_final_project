@@ -157,7 +157,7 @@ NN_MMLAYER = 2 # 4
 NN_REG_CONSTANTS_WEIGHTS =[0.9]*len(NN_HIDDEN_UNITS)
 NN_REG_CONSTANTS_BIAS = [0.9]*len(NN_HIDDEN_UNITS)
 
-NN_LEARNING_RATE = 0.0001 #0.001
+NN_LEARNING_RATE = 0.001 #0.001
 NN_REG_ON = False
 NN_REG_OP = 'l2'
 
@@ -171,7 +171,7 @@ NN_SIGMOID = True
 NN_OP = 'Rmsprop'
 
 # decay rates for the optimizers
-NN_BETA_1 = 0.95
+NN_BETA_1 = 0.99
 
 # decay rate used by 'adam'
 NN_BETA_2 = None
