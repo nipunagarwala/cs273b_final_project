@@ -96,7 +96,7 @@ MMNN_BETA_2 = None
 # Architecture of Conv Net
 # Options available: 'conv' 'maxpool' 'avgpool' 'reshape' 'fc'
 CONV_ARCH = ['conv', 'conv', 'maxpool', 'conv', 'conv', 'maxpool', 'conv', 'conv', 'maxpool',
-		 'conv', 'conv', 'maxpool','conv', 'conv', 'maxpool','reshape', 'fc', 'fc', 'fc']
+		 'reshape', 'fc', 'fc']
 
 # Number of layers in the CNN, excluding the reshape layer
 CNN_NUM_LAYERS = len(CONV_ARCH)
@@ -108,11 +108,11 @@ CNN_MMLAYER = CONV_ARCH.index("reshape") + 1
 CNN_REG_CONSTANTS_WEIGHTS = [0.95]*CNN_NUM_LAYERS
 CNN_REG_CONSTANTS_BIAS = [0.95]*CNN_NUM_LAYERS
 
-CNN_FILTER_SZ = [5, 5, None, 3, 3, None, 3, 3, None, 3, 3, None, 3, 3, None, None, None, None, None]
-CNN_NUM_FILTERS = [16, 32, None, 32, 32, None,32, 32, None,32, 32, None, 16, 1, None, None, None, None, None]
-CNN_STRIDE_SZ = [1, 1, None, 1, 1, None, 1, 1, None,1, 1, None,1, 1, None, None, None, None, None]
-CNN_POOL_SZ = [None, None, 3,None, None, 3,None, None, 3, None, None, 3, None, None, 3, None, None, None, None]
-CNN_POOL_STRIDE_SZ = [None, None, 1,None, None, 1,None, None, 2, None, None, 2, None, None, 1, None, None, None, None]
+CNN_FILTER_SZ = [5, 5, None, 3, 3, None, 3, 3, None, None, None, None]
+CNN_NUM_FILTERS = [16, 32, None, 32, 32, None, 16, 1, None, None, None, None]
+CNN_STRIDE_SZ = [1, 1, None, 1, 1, None, 1, 1, None, None, None, None]
+CNN_POOL_SZ = [None, None, 3,None, None, 3,None, None, 3, None, None, None, None]
+CNN_POOL_STRIDE_SZ = [None, None, 1, None, None, 2, None, None, 1, None, None, None, None]
 
 # The optimizer for Regularization
 # Options: 'l2' 'l1' 'kl'
@@ -133,7 +133,7 @@ CNN_BATCH_NORM = True
 CNN_OP = 'Rmsprop'
 
 # decay rates for the optimizers
-CNN_BETA_1 = 0.5
+CNN_BETA_1 = 0.9
 
 # decay rate used by 'adam'
 CNN_BETA_2 = 0.2
