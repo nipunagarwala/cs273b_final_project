@@ -133,7 +133,7 @@ CNN_BATCH_NORM = True
 CNN_OP = 'Rmsprop'
 
 # decay rates for the optimizers
-CNN_BETA_1 = 0.9
+CNN_BETA_1 = 0.5
 
 # decay rate used by 'adam'
 CNN_BETA_2 = 0.2
