@@ -105,8 +105,8 @@ CNN_NUM_FC_LAYERS = sum([1 for i in CONV_ARCH if i=='fc'])
 
 CNN_MMLAYER = CONV_ARCH.index("reshape") + 1
 
-CNN_REG_CONSTANTS_WEIGHTS = [0.9]*CNN_NUM_LAYERS
-CNN_REG_CONSTANTS_BIAS = [0.9]*CNN_NUM_LAYERS
+CNN_REG_CONSTANTS_WEIGHTS = [0.95]*CNN_NUM_LAYERS
+CNN_REG_CONSTANTS_BIAS = [0.95]*CNN_NUM_LAYERS
 
 CNN_FILTER_SZ = [5, 5, None, 3, 3, None, 3, 3, None, 3, 3, None, 3, 3, None, None, None, None, None]
 CNN_NUM_FILTERS = [16, 32, None, 32, 32, None,32, 32, None,32, 32, None, 16, 1, None, None, None, None, None]
@@ -124,7 +124,7 @@ CNN_REG_OP = 'l2'
 CNN_RHO = 0.7
 
 # Learning rate for backpropogation
-CNN_LEARNING_RATE = 0.1#0.001
+CNN_LEARNING_RATE = 0.01#0.001
 
 # apply batch norm or not
 CNN_BATCH_NORM = True
