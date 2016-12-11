@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 import math
 import argparse
 import create_brain_binaries
-import tensorflow as tf
+#import tensorflow as tf
 from sklearn.metrics import confusion_matrix
 
 from mpl_toolkits.axes_grid1 import make_axes_locatable
@@ -19,7 +19,7 @@ BRAIN_SZ = (91,109,91)
 BRAIN_REGION_SZ = 116
 
 import h5py
-def write2hdf5(filename, dict2store):
+def write2hdf5(filename, dict2store, compression="lzf"):
     """
     Write items in a dictionary to an hdf5file
 
@@ -31,7 +31,7 @@ def write2hdf5(filename, dict2store):
     """
     with h5py.File(filename,'w') as hf:
         for key,value in dict2store.iteritems():
-            hf.create_dataset(key, data=value,compression="lzf")
+            hf.create_dataset(key, data=value,compression=compression)
 
 def hdf52dict(hdf5Filename):
     """
@@ -171,19 +171,9 @@ def blackOutBrain(brainMat, brainRegions):
 
     return brainMatRet
 
-def weights2Brain(weights):
-    """
-    Constructs a 3D brain image from 'weights', which represents the value assigned for
-    each region of a brain.
 
-    @type   weights     :   3D numpy matrix
-    @param  weights     :   Values to assign for each brain region
-
-    @rtype  brainMat    :   3D numpy matrix
-    @return brainMat    :   A brain with each brain regions with the values
-                            specified in 'weights'
-    """
-    brainMat = np.zeros(BRAIN_SZ)
+def saveBrainRegion2npy():
+    brainMat = np.zeros(BRAIN_SZ, dtype=int)-1
 
     id2regionDict = {}
     with open('/data/region_name.csv') as csvfile:
@@ -206,8 +196,31 @@ def weights2Brain(weights):
         count = 0
         for row in csvR:
             coord = coords[count,:]
-            brainMat[coord[0],coord[1],coord[2]] = weights[id2regionDict[int(row[1])]]
+            brainMat[coord[0],coord[1],coord[2]] = id2regionDict[int(row[1])]
             count += 1
+
+    np.save('/data/index2BrainRegion',brainMat)
+
+def weights2Brain(weights):
+    """
+    Constructs a 3D brain image from 'weights', which represents the value assigned for
+    each region of a brain.
+
+    @type   weights     :   3D numpy matrix
+    @param  weights     :   Values to assign for each brain region
+
+    @rtype  brainMat    :   3D numpy matrix
+    @return brainMat    :   A brain with each brain regions with the values
+                            specified in 'weights'
+    """
+    brainMat = np.zeros(BRAIN_SZ)
+    index2region = np.load('/data/index2BrainRegion.npy')
+    
+    for x in range(BRAIN_SZ[0]):
+        for y in range(BRAIN_SZ[1]):
+            for z in range(BRAIN_SZ[2]):
+                if index2region[x,y,z]!=-1:
+                    brainMat[x,y,z] = weights[index2region[x,y,z]]
 
     return brainMat
 
@@ -249,6 +262,18 @@ def mat2visual(mat, zLocs, filename, valRange='auto'):
     plt.colorbar(cax=cax)
 
     plt.savefig(filename)
+
+# this doesn't work qq
+def makeAnimatedGif(path, filename):
+    from images2gif import writeGif
+    from PIL import Image
+    # Recursively list image files and store them in a variable
+    imgs = sorted(os.listdir(path))
+    images = [Image.open(os.path.join(path,i)) for i in imgs]
+
+    writeGif(filename, images, duration=0.1)
+    print os.path.realpath(filename)
+    print "%s has been created" % filename
 
 def coolPics():
     # # blackout brains
@@ -344,3 +369,7 @@ def saliency_tf(metafile, chkptfile, sample, label):
     # visualize the result
     mat2visual(grad_vals[0], [20,40,60], 'control.png')
     mat2visual(grad_vals[1], [20,40,60], 'autistic.png')
+
+if __name__ == '__main__':
+    #saveBrainRegion2npy()
+    pass
