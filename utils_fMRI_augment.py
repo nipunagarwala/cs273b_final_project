@@ -9,11 +9,15 @@ import numpy as np
 import csv
 import itertools
 import math
+import pickle
 
 BRAIN_SZ = (91,109,91)
 BRAIN_REGION_SZ = 116
 
 BRAIN_DIR = '/data/originalfALFFData'
+
+ALL_BRAINS = None
+BRAINID2COORDS = None
 
 def loadfALFF(patientID):
     """
@@ -200,7 +204,29 @@ def getGroupLabels(filename='/data/processed_phenotype_data.csv'):
                 autismIDs.append(int(row[0])) 
     return sorted(autismIDs),sorted(controlIDs)
 
-def getBrainRegion(brainDir, patientID, brainRegions, partialBrain=None):
+def blackOutBrain(brainMat, brainRegions):
+    """
+    'Blacks out' the brain regions specified with 'brainRegions'
+
+    @type   brainMat    :   3D numpy matrix
+    @param  brainMat    :   describes the brain
+    @type   brainRegion :   int array
+    @param  brainRegion :   Regions of the brain regions to black out.
+                            The range should be [1,116], so 1 Indexed!
+
+    @rtype  brainMatRet :   3D numpy matrix
+    @return brainMatRet :   Describes a brain with specified regions blacked out
+    """
+    global ALL_BRAINS,BRAINID2COORDS
+    brainMatRet = np.copy(brainMat)
+
+    for region in brainRegions:
+        for x,y,z in BRAINID2COORDS[region]:
+            brainMatRet[x,y,z] = 0
+
+    return brainMatRet
+
+def getBrainRegion(patientID, brainRegions, partialBrain=None):
     """
 
     @type   brainRegion :   int array
@@ -212,33 +238,38 @@ def getBrainRegion(brainDir, patientID, brainRegions, partialBrain=None):
     """
     # if type(partialBrain):
     #     partialBrain = np.zeros(BRAIN_SZ)
+    global ALL_BRAINS,BRAINID2COORDS
 
-    # load the base brain
-    filepath = os.path.join(brainDir,'original_%d.npy'%patientID)
-    brain = np.load(filepath)
+    if ALL_BRAINS==None:
+        # load the base brain
+        filepath = os.path.join(BRAIN_DIR,'original_%d.npy'%patientID)
+        brain = np.load(filepath)
+    else:
+        brain = ALL_BRAINS[patientID-1]
 
-    # find the id of the brainRegion
-    brainIDs = brainRegion2brainID(brainRegions)
-
-    index2region = np.load('/data/index2BrainRegion.npy')
-    for x in range(BRAIN_SZ[0]):
-        for y in range(BRAIN_SZ[1]):
-            for z in range(BRAIN_SZ[2]):
-                if index2region[x,y,z] in brainIDs:
-                    partialBrain[x,y,z] = brain[x,y,z]
+    for region in brainRegions:
+        for x,y,z in BRAINID2COORDS[region]:
+            partialBrain[x,y,z] = brain[x,y,z]
 
     return partialBrain
 
-def augmentPatchwork(patientID=None, numStealRegions=None, autistic=None, 
-                     brainDir=BRAIN_DIR, 
-                     outDir='/data/augmented_geoTrans'):
+def augmentPatchwork(patientID=None, numStealRegions=None, autistic=None, blackout=False):
+    global ALL_BRAINS,BRAINID2COORDS
     autismIDs,controlIDs = getGroupLabels()
+
+    # only augment the training set!
+    testIDs = np.load('/data/testPatientIDs.npy').tolist()
+    if patientID!=None and patientID in testIDs:
+        return None
 
     if patientID:
         # base the patchwork from a brain specified
-        # load the base brain
-        filepath = os.path.join(brainDir,'original_%d.npy'%patientID)
-        brain = np.load(filepath)
+        if ALL_BRAINS==None:
+            # load the base brain
+            filepath = os.path.join(BRAIN_DIR,'original_%d.npy'%patientID)
+            brain = np.load(filepath)
+        else:
+            brain = ALL_BRAINS[patientID-1]
 
         ids = autismIDs if (patientID in autismIDs) else controlIDs
         ids.remove(patientID)
@@ -248,7 +279,9 @@ def augmentPatchwork(patientID=None, numStealRegions=None, autistic=None,
 
         # black out the base brain
         brain = blackOutBrain(brain, regions2steal)
-        regions2steal = regions2steal[:-1]
+
+        if blackout:
+            return brain
     else:
         # completely make a patchwork from a scratch
         if autistic==None:
@@ -257,23 +290,34 @@ def augmentPatchwork(patientID=None, numStealRegions=None, autistic=None,
         brain = np.zeros(BRAIN_SZ)
         regions2steal = list(xrange(1,BRAIN_REGION_SZ+1))
 
+    # remove testing samples from the ids
+    for i in testIDs:
+        if i in ids:
+            ids.remove(i)
+
     # add the brain regions
     for region in regions2steal:
-        getBrainRegion(brainDir, random.choice(ids), region, partialBrain=brain)
+        getBrainRegion(random.choice(ids), [region], partialBrain=brain)
 
     return brain
 
 def augmentPatchworkWorker(num):
-    autistic = augmentPatchwork(autistic=True)
-    control = augmentPatchwork(autistic=False)
-    np.save('/data/augmented_patched_autistic_allRandom/'+str(num)+'_autism_all_patched',autistic)
-    np.save('/data/augmented_patched_control_allRandom/'+str(num)+'_control_all_patched',control)
+    if not os.path.isfile('/data/augmented_swap_all/'+str(num)+'_autism_all_patched.npy'):
+        autistic = augmentPatchwork(autistic=True)
+        if autistic!=None:
+            np.save('/data/augmented_swap_all/'+str(num)+'_autism_all_patched',autistic)
+    if not os.path.isfile('/data/augmented_swap_all/'+str(num)+'_control_all_patched.npy'):
+        control = augmentPatchwork(autistic=False)
+        if control!=None:
+            np.save('/data/augmented_swap_all/'+str(num)+'_control_all_patched',control)
 
 def augmentPatchworkPartialWorker(runList):
     num = runList[0]
     filename = runList[1]
-    brain = augmentPatchwork(patientID=num, numStealRegions=25)
-    np.save(filename,brain)
+    if not os.path.isfile(filename+'.npy'):
+        brain = augmentPatchwork(patientID=num, numStealRegions=25)
+        if brain!=None:
+            np.save(filename,brain)
 
 def augmentPatchworkPartial():
     autistic,control = getGroupLabels()
@@ -281,16 +325,37 @@ def augmentPatchworkPartial():
     runList = []
     for i in range(5):
         for a in autistic:
-            runList.append((a,'/data/augmented_patched_autistic_littleRandom/'
+            runList.append((a,'/data/augmented_swap_partial/'
                               +str(a)+'_autism_partially_patched_'+str(i)))
         for c in control:
-            runList.append((c,'/data/augmented_patched_control_littleRandom/'
-                              +str(c)+'_autism_partially_patched_'+str(i)))
+            runList.append((c,'/data/augmented_swap_partial/'
+                              +str(c)+'_control_partially_patched_'+str(i)))
 
     p = Pool(8)
     p.map(augmentPatchworkPartialWorker,runList)
 
-#augmentPatchworkPartial()
+def augmentBlackoutWorker(runList):
+    num = runList[0]
+    filename = runList[1]
+    if not os.path.isfile(filename+'.npy'):
+        brain = augmentPatchwork(patientID=num, numStealRegions=25, blackout=True)
+        if brain!=None:
+            np.save(filename,brain)
+
+def augmentBlackout():
+    autistic,control = getGroupLabels()
+
+    runList = []
+    for i in range(5):
+        for a in autistic:
+            runList.append((a,'/data/augmented_blackout/'
+                              +str(a)+'_autism_blackout_'+str(i)))
+        for c in control:
+            runList.append((c,'/data/augmented_blackout/'
+                              +str(c)+'_control_blackout_'+str(i)))
+
+    p = Pool(8)
+    p.map(augmentBlackoutWorker,runList)
 
 def augmentROI2Brain(patientID):
     outpath = '/data/augmented_roi_original'
@@ -365,12 +430,65 @@ def autismVScontrol():
     mat2visual(brainC1,[20,30,40,50,60],'control1.png')
     mat2visual(brainC2,[20,30,40,50,60],'control2.png')
     
-if __name__ == '__main__':
-    func = reduceHDF5Sz
-    mapList = list(xrange(1,1072))
+def scrapeTestAndTrain():
+    import json
+    import re
+    
+    with open(os.path.join('/data','reduced_all2.json')) as data_file:    
+        data = json.load(data_file)
 
-    p = Pool(4)
-    p.map(func, mapList)
+        allFilenames = [re.search('[0-9]+',re.search('[0-9]+.bin', filename).group(0)).group(0) for filename in data]
+        allPatient = sorted([int(i) for i in allFilenames])
+
+    with open(os.path.join('/data','reduced_test2.json')) as data_file:    
+        data = json.load(data_file)
+
+        testFilenames = [re.search('[0-9]+',re.search('[0-9]+.bin', filename).group(0)).group(0) for filename in data]
+        testPatient = sorted([int(i) for i in testFilenames])
+
+    with open(os.path.join('/data','reduced_train2.json')) as data_file:    
+        data = json.load(data_file)
+
+        trainFilenames = [re.search('[0-9]+',re.search('[0-9]+.bin', filename).group(0)).group(0) for filename in data]
+        trainPatient = sorted([int(i) for i in trainFilenames])
+
+    np.save('/data/allPatientIDs', np.asarray(allPatient))
+    np.save('/data/testPatientIDs', np.asarray(testPatient))
+    np.save('/data/trainPatientIDs', np.asarray(trainPatient))
+
+def prepreProcess():
+    global ALL_BRAINS,BRAINID2COORDS
+    ALL_BRAINS = []
+    for patientID in xrange(1,1072):
+        # load the base brain
+        filepath = os.path.join(BRAIN_DIR,'original_%d.npy'%patientID)
+        ALL_BRAINS.append(np.load(filepath))
+
+    BRAINID2COORDS = pickle.load(open('/data/brainRegionID2Coords.p','rb'))
+
+    print 'done with preprocessing...'
+
+if __name__ == '__main__':
+    # prepreProcess()
+    # func = augmentPatchworkWorker
+    # mapList = list(range(5000))
+
+    # p = Pool(8)
+    # p.map(func, mapList)
+
+    # augmentPatchworkPartial()
+    # augmentBlackout()
 
     #executeAugFunc(reduceNpySz,os.listdir('/data/augmented_roi_original'))
     #executeAugFunc(augmentROI2Brain,xrange(1,1072))
+
+    #a = augmentPatchwork(patientID=2, numStealRegions=25, autistic=None)
+
+    # dird = '/data/augmented_swap_all/'
+    # # dird = '/data/augmented_swap_partial/'
+    # ab = os.listdir(dird)
+    # for i in range(1):
+    #     filename = os.path.join(dird, random.choice(ab))
+    #     a = np.load(filename)
+    #     mat2visual(a,[20,40,60],'swap_all%d.png'%i)
+    pass
