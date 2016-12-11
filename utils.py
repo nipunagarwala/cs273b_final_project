@@ -1,4 +1,4 @@
-# from utils_visual import *
+from utils_visual import *
 from operator import truediv
 
 import numpy as np

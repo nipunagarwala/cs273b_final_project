@@ -12,20 +12,22 @@ CROP = 4
 # Phenotype data is vector of size (29,)
 
 
-def gaussian_noise(image, mean=0.0, stddev=0.25, seed=None):
-	if max_delta < 0:
-		raise ValueError('max_delta must be non-negative.')
+def gaussian_noise(image, threshold=1, mean=0.0, stddev=0.01, seed=None):
 
-	delta = tf.truncated_normal([], mean=mean, stddev=stddev, dtype=tf.float32, seed=seed, name=None)
-	with ops.name_scope(None, 'adjust_brightness', [image, delta]) as name:
-		image = ops.convert_to_tensor(image, name='image')
+	delta = tf.truncated_normal(image.get_shape(), mean=mean, stddev=stddev, dtype=tf.float32, seed=seed, name=None)
+	with tf.name_scope(None, 'gaussian_noise', [image, delta]) as name:
+		image = tf.convert_to_tensor(image, name='image')
 	    # Remember original dtype to so we can convert back if needed
 		orig_dtype = image.dtype
-		flt_image = tf.image.convert_image_dtype(image, dtypes.float32)
+		flt_image = tf.image.convert_image_dtype(image, tf.float32)
 
-		adjusted = tf.add(flt_image,
-		                        math_ops.cast(delta, dtypes.float32),
-		                        name=name)
+		minimum = tf.reduce_min(flt_image)
+		min_thresh = tf.add(minimum, tf.constant(threshold, dtype=tf.float32))
+		poi = tf.greater(flt_image, min_thresh)
+		noise = tf.add(flt_image, delta, name=name)
+		noise_minimum = tf.reduce_min(noise)
+
+		adjusted = tf.select(poi, noise, tf.fill(image.get_shape(), noise_minimum))
 
 		return tf.image.convert_image_dtype(adjusted, orig_dtype, saturate=True)
 
@@ -123,7 +125,8 @@ def read_binary(filename_queue, dimensions):
 
 	# Extract image
 	image_raw = tf.slice(record_bytes, [label_bytes + data_bytes], [result.height * result.width * result.depth])
-	result.image = tf.reshape(image_raw, [result.height, result.width, result.depth]) # , 1])
+	# result.image = tf.reshape(image_raw, [result.height, result.width, result.depth, 1])
+	result.image = tf.reshape(image_raw, [result.height, result.width, result.depth])
 
 	return result
 
@@ -171,26 +174,30 @@ def distorted_inputs(train, data_list, batch_size, dimensions):
 	# Read examples from files in filename queue
 	read_input = read_binary(filename_queue, dimensions)
 
-	# Crop input
-	cropped_dimensions = [(d - CROP) for d in dimensions]
-	distorted_input = tf.random_crop(read_input.image, cropped_dimensions)
+	# # Crop input
+	# cropped_dimensions = [(d - CROP) for d in dimensions]
+	# distorted_input = tf.random_crop(read_input.image, cropped_dimensions)
 
-	# Randomly flip image
-	distorted_input = tf.image.random_flip_left_right(distorted_input)
-	distorted_input = tf.image.random_flip_up_down(distorted_input)
-	distorted_input = random_flip_fwd_back(distorted_input)
+	# # Randomly flip image
+	# distorted_input = tf.image.random_flip_left_right(read_input.image)
+	# # distorted_input = tf.image.random_flip_left_right(distorted_input)
+	# distorted_input = tf.image.random_flip_up_down(distorted_input)
+	# distorted_input = random_flip_fwd_back(distorted_input)
 
-	# Distort Brightness and Contrast - make some condition to change ordering of distortions
+	# # Distort Brightness and Contrast - make some condition to change ordering of distortions
 	# distorted_input = tf.image.random_brightness(distorted_input, max_delta=0.25)
 	# distorted_input = tf.image.random_contrast(distorted_input, lower=0.2, upper=0.8)
-
-	# Add Gaussian noise
+	#
+	# # Add Gaussian noise
 	# distorted_input = gaussian_noise(distorted_input)
 
-	# Normalize - zero mean, unit variance
- 	norm_input = tf.image.per_image_whitening(distorted_input)
+	# # Normalize - zero mean, unit variance
+ 	# norm_input = tf.image.per_image_whitening(read_input.image)
+ 	# norm_input = tf.image.per_image_whitening(distorted_input)
 
-	correct_shape_input = tf.reshape(norm_input, cropped_dimensions + [1])
+	correct_shape_input = tf.reshape(read_input.image, dimensions + [1])
+	# correct_shape_input = tf.reshape(norm_input, dimensions + [1])
+	# correct_shape_input = tf.reshape(norm_input, cropped_dimensions + [1])
 
 	# Ensure that random shuffling has good mixing properties
 	min_fraction_of_examples_in_queue = 0.4
@@ -221,20 +228,21 @@ def inputs(train, data_list, batch_size, dimensions):
 	# Read examples from files in filename queue
 	read_input = read_binary(filename_queue, dimensions)
 
-	# Resize to center of image
-	offset = CROP / 2
-	cropped_dimensions = [(d - CROP) for d in dimensions]
-	resized_input = crop_3d(
-		read_input.image,
-		offset,
-		offset,
-		offset,
-		cropped_dimensions[0],
-		cropped_dimensions[1],
-		cropped_dimensions[2]
-	)
+	# # Resize to center of image
+	# offset = CROP / 2
+	# cropped_dimensions = [(d - CROP) for d in dimensions]
+	# resized_input = crop_3d(
+	# 	read_input.image,
+	# 	offset,
+	# 	offset,
+	# 	offset,
+	# 	cropped_dimensions[0],
+	# 	cropped_dimensions[1],
+	# 	cropped_dimensions[2]
+	# )
+	# correct_shape_input = tf.reshape(resized_input, cropped_dimensions + [1])
 
-	correct_shape_input = tf.reshape(resized_input, cropped_dimensions + [1])
+	correct_shape_input = tf.reshape(read_input.image, dimensions + [1])
 
 	# Ensure that random shuffling has good mixing properties
 	min_fraction_of_examples_in_queue = 0.4
@@ -244,3 +252,5 @@ def inputs(train, data_list, batch_size, dimensions):
 	# Generate a batch of images and label by building up a queue of examples
 	return _generate_image_and_label_batch(correct_shape_input, read_input.data,
 					read_input.label, min_queue_examples, batch_size, train)
+	# return _generate_image_and_label_batch(read_input.image, read_input.data,
+	# 				read_input.label, min_queue_examples, batch_size, train)

@@ -96,7 +96,7 @@ MMNN_BETA_2 = None
 # Architecture of Conv Net
 # Options available: 'conv' 'maxpool' 'avgpool' 'reshape' 'fc'
 CONV_ARCH = ['conv', 'conv', 'maxpool', 'conv', 'conv', 'maxpool', 'conv', 'conv', 'maxpool',
-		 'conv', 'conv', 'maxpool','conv', 'conv', 'maxpool','reshape', 'fc', 'fc', 'fc']
+		 'reshape', 'fc', 'fc']
 
 # Number of layers in the CNN, excluding the reshape layer
 CNN_NUM_LAYERS = len(CONV_ARCH)
@@ -105,14 +105,14 @@ CNN_NUM_FC_LAYERS = sum([1 for i in CONV_ARCH if i=='fc'])
 
 CNN_MMLAYER = CONV_ARCH.index("reshape") + 1
 
-CNN_REG_CONSTANTS_WEIGHTS = [0.9]*CNN_NUM_LAYERS
-CNN_REG_CONSTANTS_BIAS = [0.9]*CNN_NUM_LAYERS
+CNN_REG_CONSTANTS_WEIGHTS = [0.95]*CNN_NUM_LAYERS
+CNN_REG_CONSTANTS_BIAS = [0.95]*CNN_NUM_LAYERS
 
-CNN_FILTER_SZ = [5, 5, None, 3, 3, None, 3, 3, None, 3, 3, None, 3, 3, None, None, None, None, None]
-CNN_NUM_FILTERS = [16, 32, None, 32, 32, None,32, 32, None,32, 32, None, 16, 1, None, None, None, None, None]
-CNN_STRIDE_SZ = [1, 1, None, 1, 1, None, 1, 1, None,1, 1, None,1, 1, None, None, None, None, None]
-CNN_POOL_SZ = [None, None, 3,None, None, 3,None, None, 3, None, None, 3, None, None, 3, None, None, None, None]
-CNN_POOL_STRIDE_SZ = [None, None, 1,None, None, 1,None, None, 2, None, None, 2, None, None, 1, None, None, None, None]
+CNN_FILTER_SZ = [5, 5, None, 3, 3, None, 3, 3, None, None, None, None]
+CNN_NUM_FILTERS = [16, 32, None, 32, 32, None, 16, 1, None, None, None, None]
+CNN_STRIDE_SZ = [1, 1, None, 1, 1, None, 1, 1, None, None, None, None]
+CNN_POOL_SZ = [None, None, 3,None, None, 3,None, None, 3, None, None, None, None]
+CNN_POOL_STRIDE_SZ = [None, None, 1, None, None, 2, None, None, 1, None, None, None, None]
 
 # The optimizer for Regularization
 # Options: 'l2' 'l1' 'kl'
@@ -124,7 +124,7 @@ CNN_REG_OP = 'l2'
 CNN_RHO = 0.7
 
 # Learning rate for backpropogation
-CNN_LEARNING_RATE = 0.0001#0.001
+CNN_LEARNING_RATE = 0.01#0.001
 
 # apply batch norm or not
 CNN_BATCH_NORM = True
