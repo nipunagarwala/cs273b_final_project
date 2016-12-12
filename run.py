@@ -1,40 +1,42 @@
 import tensorflow as tf
 import numpy as np
-from sklearn.metrics import confusion_matrix
 from utils import *
+# from utils_visual import *
 from layers import *
 from models import *
 from input_brain import *
-import os
 from constants import *
+import os
+import datetime
+import csv
 
 FLAGS = tf.app.flags.FLAGS
 
 tf.app.flags.DEFINE_string('train_dir', '/data/train',
                            """Directory where to write event logs """)
 
-tf.app.flags.DEFINE_string('ae_train_binaries', '/data/reduced_train.json',
+tf.app.flags.DEFINE_string('ae_train_binaries', '/data/reduced_train2.json',
                            """File containing list of binary filenames used for training """)
-tf.app.flags.DEFINE_string('ae_test_binaries', '/data/reduced_test.json',
+tf.app.flags.DEFINE_string('ae_test_binaries', '/data/reduced_test2.json',
                            """File containing list of binary filenames used for testing """)
-tf.app.flags.DEFINE_string('ae_all_binaries', '/data/reduced_all.json',
+tf.app.flags.DEFINE_string('ae_all_binaries', '/data/reduced_all2.json',
                            """File containing list of all the binary filenames """)
 
-tf.app.flags.DEFINE_string('train_binaries', '/data/train.json',
+tf.app.flags.DEFINE_string('train_binaries', '/data/train2.json',
                            """File containing list of binary filenames used for training """)
-tf.app.flags.DEFINE_string('test_binaries', '/data/test.json',
+tf.app.flags.DEFINE_string('test_binaries', '/data/test2.json',
                            """File containing list of binary filenames used for testing """)
-tf.app.flags.DEFINE_string('all_binaries', '/data/all.json',
+tf.app.flags.DEFINE_string('all_binaries', '/data/all2.json',
                            """File containing list of all the binary filenames """)
 
 # Convolutional Auto Encoder compressed files
-tf.app.flags.DEFINE_string('reduced_dir', '/data/binaries_reduced',
+tf.app.flags.DEFINE_string('reduced_dir', '/data/binaries_reduced2',
                            """File containing list of all the binary filenames """)
-tf.app.flags.DEFINE_string('reduced_train_binaries', '/data/reduced_train.json',
+tf.app.flags.DEFINE_string('reduced_train_binaries', '/data/reduced_aug_partial_train.json',#'/data/reduced_train2.json',
                            """File containing list of binary filenames used for training """)
-tf.app.flags.DEFINE_string('reduced_test_binaries', '/data/reduced_test.json',
+tf.app.flags.DEFINE_string('reduced_test_binaries', '/data/reduced_test2.json',
                            """File containing list of binary filenames used for testing """)
-tf.app.flags.DEFINE_string('reduced_all_binaries', '/data/reduced_all.json',
+tf.app.flags.DEFINE_string('reduced_all_binaries', '/data/reduced_all2.json',
                            """File containing list of all the binary filenames """)
 
 # Run Model flags
@@ -44,12 +46,15 @@ tf.app.flags.DEFINE_boolean('cae', True, """Run the Convolutional AutoEncoder ""
 tf.app.flags.DEFINE_boolean('ae', True, """Run the AutoEncoder """)
 
 
-def createVariables(train, binary_filelist, input_dimensions, batch_size):
+def createVariables(train, binary_filelist, batch_size, input_dimensions):
     # train: Boolean
     # data_list: Path of a file containing a list of all binary data file paths
     # batch_size: int
-    p_keep_conv = tf.placeholder("float")
-    X_image, X_data, Y = inputs(train, binary_filelist, batch_size, input_dimensions)
+    p_keep_conv = tf.placeholder(tf.float32)
+    if train:
+        X_image, X_data, Y = distorted_inputs(train, binary_filelist, batch_size, input_dimensions)
+    else:
+        X_image, X_data, Y = inputs(train, binary_filelist, batch_size, input_dimensions)
     return X_image, X_data, Y, p_keep_conv
 
 
@@ -191,7 +196,7 @@ def createVanillaNN(data, output, p_keep_conv,batch_size, multiModal=False):
     regConstants = NN_REG_CONSTANTS_WEIGHTS
     hidden_units = NN_HIDDEN_UNITS
 
-    print("Creating the Vannil Neural Network Object")
+    print("Creating the Vanilla Neural Network Object")
 
     deepNN = NeuralNetwork(data, output, p_keep_conv, batch_size,
                             learning_rate, beta1, beta2, w_lmbda=regConstants, b_lmbda = NN_REG_CONSTANTS_BIAS, op=op)
@@ -246,12 +251,19 @@ def createMultiModalNN(image, data, output, p_keep_conv, batch_size):
 
 
 def run_model(train, model, binary_filelist, run_all, batch_size, max_steps, overrideChkpt):
+    if not train:
+        const_dict = create_constants_dictionary()
+        now = datetime.datetime.now()
+        filename = now.strftime("%m-%d-%Y_%H:%M") + "_" + model + ".json"
+        with open(filename, 'w') as const_out:
+            json.dump(const_dict, const_out, sort_keys=True, indent=4, ensure_ascii=False)
+
     if model=='cae':
         input_dimensions = [91, 109, 91]
     else:
         input_dimensions = [31, 37, 31]
 
-    image, data, output, p_keep_conv = createVariables(train, binary_filelist, input_dimensions, batch_size)
+    image, data, output, p_keep_conv = createVariables(train, binary_filelist, batch_size, input_dimensions)
 
     if model == 'ae':
         layer_outputs, weights, encode, decode, \
@@ -272,69 +284,95 @@ def run_model(train, model, binary_filelist, run_all, batch_size, max_steps, ove
     print("Using the following input dimensions: " + str(input_dimensions))
     print("Created the entire model! YAY!")
 
-    # Create a saver
-    saver = tf.train.Saver(tf.all_variables())
+    ckpt = tf.train.get_checkpoint_state(FLAGS.checkpoint_dir)
+    if train:
+        ckpt_list = [ckpt.model_checkpoint_path if ckpt else None]
+    else:
+        ckpt_list = ckpt.all_model_checkpoint_paths
+    print ckpt_list
 
-    # Launch the graph in a session
-    with tf.Session() as sess:
+    with open('checkpoint_results.csv', 'a') as csvfile:
+        writer = csv.writer(csvfile)
+        writer.writerow(['checkpoint', 'accuracy', 'recall', 'precision', 'f_score'])
+        for ckpt_file in ckpt_list:
+            # Launch the graph in a session
+            gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=1.0)
+            with tf.Session(config=tf.ConfigProto(gpu_options=gpu_options)) as sess:
+                # Create a saver
+                saver = tf.train.Saver(tf.all_variables(), max_to_keep=100)
 
-        init_op = tf.group(tf.initialize_all_variables(), tf.initialize_local_variables())
+                if train:
+                    init_op = tf.group(tf.initialize_all_variables(), tf.initialize_local_variables())
+                    init_op.run()
 
-        init_op.run()
+                coord = tf.train.Coordinator()
+                tf.train.start_queue_runners(coord=coord, sess=sess)
 
-        coord = tf.train.Coordinator()
-        tf.train.start_queue_runners(coord=coord, sess=sess)
+                # Visualization of Distorted inputs
+                distorted_image = np.asarray(sess.run(image))
+                print np.shape(distorted_image)
+                mat2visual(distorted_image[0, :, :, :, 0], [10, 15, 19], 'distortedImage.png', 'auto')
 
-        i_stopped = setup_checkpoint(train, sess, saver, FLAGS.checkpoint_dir, overrideChkpt)
+                i_stopped = setup_checkpoint(train, sess, saver, ckpt, str(ckpt_file), overrideChkpt)
 
-        compressed_filelist = []
-        predictions = []
-        targets = []
-        for i in range(i_stopped, max_steps):
-            print("Running iteration {} of TF Session".format(i))
-            if train:
-                _, loss = sess.run([train_op, cost])
-            else:
-                if model == 'cae' or model == 'ae':
-                    loss = sess.run(cost)
-                else:
-                    pred, loss, targ = sess.run([layer_outputs['pred'], cost, output])
-                    pred = round(pred[0][0])
-                    targ = targ[0]
-                    print "Prediction is: " + str(pred)
-                    print "Target is: " + str(targ)
-                    predictions.append(pred)
-                    targets.append(targ)
-            print("The current loss is: " + str(loss))
-            # print("Current predicted labels are: " + str(layer_outputs['pred'].eval()))
+                compressed_filelist = []
+                predictions = []
+                targets = []
+                for i in range(i_stopped, max_steps):
+                    print("Running iteration {} of TF Session".format(i))
+                    if model == 'cae' or model == 'ae':
+                        if train:
+                            _, loss = sess.run([train_op, cost])
+                        else:
+                            loss = sess.run(cost)
+                    else:
+                        if train:
+                            _, pred, loss, targ = sess.run([train_op, layer_outputs['pred'], cost, output])
+                            print "Prediction Probabilities are: " + str(pred)
+                            predictions = np.argmax(pred, axis=1)
+                            targets = targ.flatten().astype(int)
+                            print "Predictions are: " + str(predictions)
+                            print "Target are:      " + str(targets)
+                            compute_statistics(targets, predictions)
+                        else:
+                            pred, loss, targ = sess.run([layer_outputs['pred'], cost, output])
+                            print "Prediction Probabilities are: " + str(pred)
+                            predictions.extend(np.argmax(pred, axis=1).flatten().tolist())
+                            targets.extend(targ.flatten().tolist())
+                    print("The current loss is: " + str(loss))
 
-            # Checkpoint model at each 100 iterations
-            should_save = i != 0 and i % 1000 == 0 or (i+1) == max_steps
-            if should_save and train:
-                checkpoint_path = os.path.join(FLAGS.checkpoint_dir, 'model.ckpt')
-                saver.save(sess, checkpoint_path, global_step=i)
+                    # Checkpoint model at each 100 iterations
+                    should_save = i != 0 and i % 1000 == 0 or (i+1) == max_steps
+                    if should_save and train:
+                        checkpoint_path = os.path.join(FLAGS.checkpoint_dir, 'model.ckpt')
+                        saver.save(sess, checkpoint_path, global_step=i)
 
-            # If running all files for CAE
-            if not train and run_all and model == 'cae':
-                bin_path = create_CEA_reduced_binary(sess, encode, output,
-                                                    data, FLAGS, i)
-                compressed_filelist.append(bin_path)
+                    # If running all files for CAE
+                    if not train and run_all and model == 'cae':
+                        bin_path = create_CEA_reduced_binary(sess, encode, output,
+                                                            data, FLAGS, i)
+                        compressed_filelist.append(bin_path)
 
-        coord.request_stop()
-        coord.join(stop_grace_period_secs=10)
+                coord.request_stop()
+                coord.join(stop_grace_period_secs=10)
 
-        if not train and model != 'cae' and model != 'ae':
-            conf_matrix = confusion_matrix(targets, predictions)
-            accuracy = (conf_matrix[0, 0] + conf_matrix[1, 1]) / float(np.sum(conf_matrix))
-            print "Accuracy of the model is: " + str(accuracy)
-            plot_confusion_matrix(conf_matrix)
+                if not train and model != 'cae' and model != 'ae':
+                    predictions = predictions[:107]
+                    targets = targets[:107]
+                    print predictions
+                    print targets
+                    conf_matrix, accuracy, recall, precision, f_score = compute_statistics(targets, predictions)
+                    plot_confusion_matrix(conf_matrix)
 
-        # CAE/AE Output
-        if model == 'ae':
-            pass
-        elif model == 'cae':
-            generate_CAE_output(train, run_all, sess, encode, decode, brain_image,
-                            compressed_filelist, output_binary_filelist, FLAGS)
+                    writer.writerow([ckpt_file.split('/')[-1].split('-')[-1], accuracy, recall, precision, f_score])
+
+
+                # CAE/AE Output
+                if model == 'ae':
+                    pass
+                elif model == 'cae':
+                    generate_CAE_output(train, run_all, sess, encode, decode, brain_image,
+                                    compressed_filelist, output_binary_filelist, FLAGS)
 
 
 
