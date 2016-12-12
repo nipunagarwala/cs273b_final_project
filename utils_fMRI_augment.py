@@ -145,6 +145,40 @@ def loadfALFF_All():
         sizeReduction(data, (45, 54, 45), opt=3, poolBox=(2,2,2), filename='pooledData/maxPool_'+str(i)+'_reduce2')
         sizeReduction(data, (30, 36, 30), opt=3, poolBox=(3,3,3), filename='pooledData/maxPool_'+str(i)+'_reduce3')
 
+def reduceMaxAvg():
+    import json
+    from create_brain_binaries import _normalize_brain,_create_feature_binary
+
+    testIDs = np.load('/data/useful_npy/testPatientIDs.npy').tolist()
+
+    inputDir = '/data/pooledData/'
+    outputDir = '/data/binaries_%s_reduce_3/'
+    poolMethods = ['avgPool','maxPool']
+
+    testFiles = {'avgPool':[],'maxPool':[]}
+    trainFiles = {'avgPool':[],'maxPool':[]}
+    for patientID in xrange(1,1072):
+        print patientID
+        for poolMethod in poolMethods:
+            brainMat = np.load(os.path.join(inputDir,'%s_%d_reduce3.npy'%(poolMethod,patientID)))
+            brainMat = brainMat.astype(np.float32)
+            normailized_batchedMat = _normalize_brain(brainMat)
+
+            patient_label,phenotype_data = returnFeatures(patientID)
+
+            bin_path = os.path.join(outputDir%poolMethod, '%s_%d_reduce3.bin' % (poolMethod,patientID))
+            _create_feature_binary(phenotype_data, normailized_batchedMat, patient_label, bin_path)
+
+            if patientID in testIDs:
+                testFiles[poolMethod].append(bin_path)
+            else:
+                trainFiles[poolMethod].append(bin_path)
+
+    json.dump(testFiles['avgPool'], open('/data/test_reduce3_avgPool.json','w'))
+    json.dump(trainFiles['avgPool'], open('/data/train_reduce3_avgPool.json','w'))
+    json.dump(testFiles['maxPool'], open('/data/test_reduce3_maxPool.json','w'))
+    json.dump(trainFiles['maxPool'], open('/data/train_reduce3_maxPool.json','w'))
+
 def reduceHDF5Sz(patientID):
     with open('/data/processed_phenotype_data.csv') as csvfile:
         idd = next(itertools.islice(csv.reader(csvfile), patientID, None))[2]
@@ -156,7 +190,7 @@ def reduceHDF5Sz(patientID):
     outputPath = '/data/augmented_roi_pooled_%d/%d_roi_pooled_%d.hdf5'
     roiPath = '/data/augmented_roi_original/%d_roi.hdf5'
     reduxs = [4,5,6]
-    if os.path.isfile(outputPath % (reduxs[0],patientID,reduxs[0])):
+    if os.path.isfile(outputPath % (reduxs[1],patientID,reduxs[1])):
         return
 
     h5Dict = hdf52dict(roiPath%patientID)
@@ -174,7 +208,6 @@ def reduceHDF5Sz(patientID):
 
     for redux in reduxs:
         write2hdf5(outputPath % (redux,patientID,redux), newH5Dict[redux], compression='lzf')
-
 
 def augmentGeoTrans(patientID, originalDir='/data/originalfALFFData', outDir='/data/augmented_geoTrans'):
     filepath = os.path.join(originalDir,'original_%d.npy'%patientID)
@@ -258,7 +291,7 @@ def augmentPatchwork(patientID=None, numStealRegions=None, autistic=None, blacko
     autismIDs,controlIDs = getGroupLabels()
 
     # only augment the training set!
-    testIDs = np.load('/data/testPatientIDs.npy').tolist()
+    testIDs = np.load('/data/useful_npy/testPatientIDs.npy').tolist()
     if patientID!=None and patientID in testIDs:
         return None
 
@@ -314,22 +347,23 @@ def augmentPatchworkWorker(num):
 def augmentPatchworkPartialWorker(runList):
     num = runList[0]
     filename = runList[1]
+    numStealRegions = runList[2]
     if not os.path.isfile(filename+'.npy'):
-        brain = augmentPatchwork(patientID=num, numStealRegions=25)
+        brain = augmentPatchwork(patientID=num, numStealRegions=numStealRegions)
         if brain!=None:
             np.save(filename,brain)
 
-def augmentPatchworkPartial():
+def augmentPatchworkPartial(numStealRegions):
     autistic,control = getGroupLabels()
 
     runList = []
-    for i in range(5):
+    for i in xrange(5,10):
         for a in autistic:
-            runList.append((a,'/data/augmented_swap_partial/'
-                              +str(a)+'_autism_partially_patched_'+str(i)))
+            runList.append((a,'/data/augmented_swap_partial_steal_%d/%d_autism_partially_patched_%d' 
+                               % (numStealRegions,a,i),numStealRegions))
         for c in control:
-            runList.append((c,'/data/augmented_swap_partial/'
-                              +str(c)+'_control_partially_patched_'+str(i)))
+            runList.append((c,'/data/augmented_swap_partial_steal_%d/%d_control_partially_patched_%d' 
+                               % (numStealRegions,c,i),numStealRegions))
 
     p = Pool(8)
     p.map(augmentPatchworkPartialWorker,runList)
@@ -430,31 +464,31 @@ def autismVScontrol():
     mat2visual(brainC1,[20,30,40,50,60],'control1.png')
     mat2visual(brainC2,[20,30,40,50,60],'control2.png')
     
-def scrapeTestAndTrain():
+def scrapeTestAndTrain(jsonAll, jsonTest, jsonTrain, regexStr, outPrefix=''):
     import json
     import re
     
-    with open(os.path.join('/data','reduced_all2.json')) as data_file:    
+    with open(os.path.join('/data',jsonAll)) as data_file:    
         data = json.load(data_file)
 
-        allFilenames = [re.search('[0-9]+',re.search('[0-9]+.bin', filename).group(0)).group(0) for filename in data]
+        allFilenames = [re.search('[0-9]+',re.search(regexStr, filename).group(0)).group(0) for filename in data]
         allPatient = sorted([int(i) for i in allFilenames])
 
-    with open(os.path.join('/data','reduced_test2.json')) as data_file:    
+    with open(os.path.join('/data',jsonTest)) as data_file:    
         data = json.load(data_file)
 
-        testFilenames = [re.search('[0-9]+',re.search('[0-9]+.bin', filename).group(0)).group(0) for filename in data]
+        testFilenames = [re.search('[0-9]+',re.search(regexStr, filename).group(0)).group(0) for filename in data]
         testPatient = sorted([int(i) for i in testFilenames])
 
-    with open(os.path.join('/data','reduced_train2.json')) as data_file:    
+    with open(os.path.join('/data',jsonTrain)) as data_file:    
         data = json.load(data_file)
 
-        trainFilenames = [re.search('[0-9]+',re.search('[0-9]+.bin', filename).group(0)).group(0) for filename in data]
+        trainFilenames = [re.search('[0-9]+',re.search(regexStr, filename).group(0)).group(0) for filename in data]
         trainPatient = sorted([int(i) for i in trainFilenames])
 
-    np.save('/data/allPatientIDs', np.asarray(allPatient))
-    np.save('/data/testPatientIDs', np.asarray(testPatient))
-    np.save('/data/trainPatientIDs', np.asarray(trainPatient))
+    np.save('/data/useful_npy/%sallPatientIDs'%outPrefix, np.asarray(list(set(allPatient))))
+    np.save('/data/useful_npy/%stestPatientIDs'%outPrefix, np.asarray(list(set(testPatient))))
+    np.save('/data/useful_npy/%strainPatientIDs'%outPrefix, np.asarray(list(set(trainPatient))))
 
 def prepreProcess():
     global ALL_BRAINS,BRAINID2COORDS
@@ -464,19 +498,135 @@ def prepreProcess():
         filepath = os.path.join(BRAIN_DIR,'original_%d.npy'%patientID)
         ALL_BRAINS.append(np.load(filepath))
 
-    BRAINID2COORDS = pickle.load(open('/data/brainRegionID2Coords.p','rb'))
+    BRAINID2COORDS = pickle.load(open('/data/useful_npy/brainRegionID2Coords.p','rb'))
 
     print 'done with preprocessing...'
 
+PHENOTYPE_FILE = os.path.abspath('/data/normalized_imputed_phenotype_data.csv')
+def returnFeatures(patientID, phenotype_file=PHENOTYPE_FILE):
+    with open(phenotype_file, 'r') as csvfile:
+        patient_reader = csv.reader(csvfile)
+        for i in range(patientID):
+            next(patient_reader)
+
+        # Retrieve data from phenotype CSV
+        patient = next(patient_reader)
+        patient_label = np.float32(patient[3])
+        phenotype_data = patient[5:16] + patient[19:]
+        phenotype_data = np.asarray(phenotype_data, dtype=np.float32)
+
+    return patient_label,phenotype_data
+
+def convertBrain2npy(patientID, brain_data, bin_path):
+    from create_brain_binaries import _normalize_brain,_create_feature_binary
+
+    patient_label,phenotype_data = returnFeatures(patientID)
+
+    # Load brain images from .npy files
+    brain_data = brain_data.astype(np.float32)
+    normailized_brain = _normalize_brain(brain_data)
+
+    # Create binaries from all data
+    _create_feature_binary(phenotype_data, normailized_brain, patient_label, bin_path)
+
+def batchROIData(patientID, batchSz=10):
+    import re
+    from create_brain_binaries import _normalize_brain,_create_feature_binary
+
+    with open('/data/processed_phenotype_data.csv') as csvfile:
+        idd = next(itertools.islice(csv.reader(csvfile), patientID, None))[2]
+
+    # check if ROI file exists for this patient
+    fileName = '/data/CS_273B_Final_Project/'+str(idd)+' _data.csv'
+    if not os.path.isfile(fileName):
+        return
+
+    inputPath = '/data/augmented_roi_pooled_%d/%d_roi_pooled_%d.hdf5'
+    outputPath = '/data/augmented_roi_pooled_%d_batched/%d_roi_pooled_%d_batched.hdf5'
+    reduxs = [4,5,6]
+    if os.path.isfile(outputPath % (reduxs[1],patientID,reduxs[1])):
+        return
+
+    patient_label,phenotype_data = returnFeatures(patientID)
+
+    for redux in reduxs:
+        h5Dict = hdf52dict(inputPath % (redux,patientID,redux))
+
+        maxStep = max([int(re.search('[0-9]+',i).group(0)) for i in h5Dict.keys()])
+        npyShape = h5Dict['step_0'].shape
+        allSteps = np.zeros((npyShape[0], npyShape[1], npyShape[2], maxStep))
+        for i in range(maxStep):
+            allSteps[:,:,:,i] = h5Dict['step_%d'%i]
+
+        for i in range(maxStep-batchSz):
+            batchedMat = allSteps[:,:,:,i:i+batchSz].copy()
+
+            batchedMat = batchedMat.astype(np.float32)
+            normailized_batchedMat = _normalize_brain(batchedMat)
+
+            # Create binaries from all data
+            bin_path = '%d_roi_batchSz_%d_index_%d_reduction_%d.bin' % (patientID,batchSz,i,redux)
+            outDir = '/data/binaries_roi_batchSz_%d_reduced_%d' % (batchSz,redux)
+            _create_feature_binary(phenotype_data, normailized_batchedMat, 
+                                   patient_label, os.path.join(outDir, bin_path))
+
+def generateJSON(dataDir, regexList, outputName, testIDs):
+    import re
+    import json
+
+    filenames = os.listdir(dataDir)
+
+    testList = []
+    trainList = []
+    for filename in filenames:
+        regStr = filename
+        for rex in regexList:
+            regStr = re.search(rex,regStr).group(0)
+        patientID = int(regStr)
+
+        if patientID in testIDs:
+            testList.append(os.path.join(dataDir,filename))
+        else:
+            trainList.append(os.path.join(dataDir,filename))
+
+    json.dump(testList,open('/data/test_'+outputName+'.json','w'))
+    json.dump(trainList,open('/data/train_'+outputName+'.json','w'))
+
+
+def generateJSONTrain(dataDir, outputName):
+    import json
+
+    trainList = os.listdir(dataDir)
+    json.dump(trainList,open('/data/train_'+outputName+'.json','w'))
+
+def combineROITestJSON(filename, outPath, batchSz, reduction):
+    import json
+    import re
+
+    files = json.load(open(filename,'r'))
+
+    patientFiles = {}
+    for file in files:
+        patientID = int(re.search('[0-9]+',re.search('[0-9]+_roi_batchSz',file).group(0)).group(0))
+        if patientID not in patientFiles:
+            patientFiles[patientID] = []
+        patientFiles[patientID].append(file)
+
+    for k in patientFiles.keys():
+        json.dump(patientFiles[k],open(os.path.join(outPath,'roi_batchSz_%d_reduction_%d_test_patientID_%d.json'
+                                       %(batchSz,reduction,k)),'w'))
+
 if __name__ == '__main__':
     # prepreProcess()
-    # func = augmentPatchworkWorker
-    # mapList = list(range(5000))
+    # func = batchROIData
+    # mapList = list(xrange(1,1072))
 
     # p = Pool(8)
     # p.map(func, mapList)
 
-    # augmentPatchworkPartial()
+    # augmentPatchworkPartial(25)
+    # reduceMaxAvg()
+
     # augmentBlackout()
 
     #executeAugFunc(reduceNpySz,os.listdir('/data/augmented_roi_original'))
@@ -491,4 +641,27 @@ if __name__ == '__main__':
     #     filename = os.path.join(dird, random.choice(ab))
     #     a = np.load(filename)
     #     mat2visual(a,[20,40,60],'swap_all%d.png'%i)
-    pass
+
+    # mat2visual(ALL_BRAINS[235],[20,40,60],'allbrain.png')
+
+    # a = np.load('/data/originalfALFFData/original_236.npy')
+    # mat2visual(a,[20,40,60],'npyBrain.png')
+
+    
+    # a = augmentPatchwork(patientID=27, numStealRegions=25)
+    # if a!=None:
+    #     mat2visual(a,[20,40,60],'a.png')
+    # else:
+    #     print 'None'
+
+    # generateJSON('/data/binaries_avgPool_reduce_3', ['avgPool_[0-9]+','[0-9]+'], 'avgPool_reduce_3', np.load('/data/useful_npy/testPatientIDs.npy').tolist())
+    # generateJSON('/data/binaries_maxPool_reduce_3', ['maxPool_[0-9]+','[0-9]+'], 'maxPool_reduce_3', np.load('/data/useful_npy/testPatientIDs.npy').tolist())
+
+
+    # generateJSON('/data/binaries_roi_batchSz_10_reduced_4', ['[0-9]+_roi','[0-9]+'], 'roi_batchSz_10_reduce_4', np.load('/data/useful_npy/roi_testPatientIDs.npy').tolist())
+    # generateJSON('/data/binaries_roi_batchSz_10_reduced_5', ['[0-9]+_roi','[0-9]+'], 'roi_batchSz_10_reduce_5', np.load('/data/useful_npy/roi_testPatientIDs.npy').tolist())
+    # generateJSON('/data/binaries_roi_batchSz_10_reduced_6', ['[0-9]+_roi','[0-9]+'], 'roi_batchSz_10_reduce_6', np.load('/data/useful_npy/roi_testPatientIDs.npy').tolist())
+
+    combineROITestJSON('/data/test_roi_batchSz_10_reduce_4.json', '/data/roi_batchSz_10_reduction_4_test_json', 10, 4)
+    combineROITestJSON('/data/test_roi_batchSz_10_reduce_5.json', '/data/roi_batchSz_10_reduction_5_test_json', 10, 5)
+    combineROITestJSON('/data/test_roi_batchSz_10_reduce_6.json', '/data/roi_batchSz_10_reduction_6_test_json', 10, 6)
