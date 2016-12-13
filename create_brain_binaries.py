@@ -6,8 +6,9 @@ import argparse
 
 
 BRAIN_DIR = os.path.abspath('/data/originalfALFFData')
-BRAIN_DIR_AUG_ALL = os.path.abspath('/data/augmented_all_patched')
-BRAIN_DIR_AUG_PARTIAL = os.path.abspath('/data/augmented_partial_patched')
+BRAIN_DIR_AUG_ALL = os.path.abspath('/data/augmented_swap_all')
+# BRAIN_DIR_AUG_PARTIAL = os.path.abspath('/data/augmented_swap_partial')
+BRAIN_DIR_AUG_PARTIAL = os.path.abspath('/data/augmented_swap_partial_steal_25_split_80_20')
 
 # PHENOTYPE_FILE = os.path.abspath('/data/processed_imputed_phenotype_data.csv')
 PHENOTYPE_FILE = os.path.abspath('/data/normalized_imputed_phenotype_data.csv')
@@ -17,11 +18,13 @@ ALL_FILES = os.path.abspath('/data/all2.json')
 TRAIN_FILE = os.path.abspath('/data/train2.json')
 TEST_FILE = os.path.abspath('/data/test2.json')
 
-OUTPUT_DIR_PARTIAL_RANDOM = os.path.abspath('/data/aug_partial_binaries')
-TRAIN_FILE_PARTIAL_RANDOM = os.path.abspath('/data/aug_partial_train.json')
+# OUTPUT_DIR_PARTIAL_RANDOM = os.path.abspath('/data/swap_partial_binaries')
+OUTPUT_DIR_PARTIAL_RANDOM = os.path.abspath('/data/augmented_swap_partial_steal_25_split_80_20_binaries')
+# TRAIN_FILE_PARTIAL_RANDOM = os.path.abspath('/data/swap_partial_train.json')
+TRAIN_FILE_PARTIAL_RANDOM = os.path.abspath('/data/train_20_80_split.json')
 
-OUTPUT_DIR_ALL_RANDOM = os.path.abspath('/data/aug_all_binaries')
-TRAIN_FILE_ALL_RANDOM = os.path.abspath('/data/aug_all_train.json')
+OUTPUT_DIR_ALL_RANDOM = os.path.abspath('/data/swap_all_binaries')
+TRAIN_FILE_ALL_RANDOM = os.path.abspath('/data/swap_all_train.json')
 
 
 def _create_feature_binary(X_data, X_image, y_feature, filename):
@@ -195,6 +198,8 @@ def main():
 
         output_dir = OUTPUT_DIR_ALL_RANDOM if args.all_random else OUTPUT_DIR_PARTIAL_RANDOM
         train_file = TRAIN_FILE_ALL_RANDOM if args.all_random else TRAIN_FILE_PARTIAL_RANDOM
+
+        print brain_dir, output_dir, train_file
 
         file_list = convert_random_brain_npy(brain_dir, output_dir, use_pheno)
         with open(train_file, 'w') as outfile:
