@@ -1,4 +1,5 @@
 from operator import truediv
+from utils_fMRI_augment import *
 
 import numpy as np
 import csv
@@ -132,47 +133,8 @@ def brainRegion2brainID(brainRegions):
 
     return brainIDs
 
-def blackOutBrain(brainMat, brainRegions):
-    """
-    'Blacks out' the brain regions specified with 'brainRegions'
-
-    @type   brainMat    :   3D numpy matrix
-    @param  brainMat    :   describes the brain
-    @type   brainRegion :   int array
-    @param  brainRegion :   Regions of the brain regions to black out.
-                            The range should be [1,116], so 1 Indexed!
-
-    @rtype  brainMatRet :   3D numpy matrix
-    @return brainMatRet :   Describes a brain with specified regions blacked out
-    """
-    brainMatRet = np.copy(brainMat)
-
-    # find the id of the brainRegion
-    brainIDs = brainRegion2brainID(brainRegions)
-
-    # figure out which voxels blong to the brain regions
-    blackOutVoxels = [0]
-    with open('/data/region_code.csv') as csvfile:
-        csvR = csv.reader(csvfile)
-        next(csvR)
-        for row in csvR:
-            if int(row[1]) in brainIDs:
-                blackOutVoxels.append(int(row[0]))
-
-    # figure out where the blackout voxels are located
-    with open('/data/coord.csv') as csvfile:
-        csvR = csv.reader(csvfile)
-        next(csvR)
-        for i in range(len(blackOutVoxels)-1):
-            for j in range(blackOutVoxels[i+1]-blackOutVoxels[i]-1):
-                next(csvR)
-            coord = [int(i) for i in next(csvR)]
-            brainMatRet[coord[1]-1, coord[2]-1, coord[3]-1] = 0
-
-    return brainMatRet
-
-
 def saveBrainRegion2npy():
+    import pickle
     brainMat = np.zeros(BRAIN_SZ, dtype=int)-1
 
     id2regionDict = {}
@@ -189,6 +151,8 @@ def saveBrainRegion2npy():
         coords = coords[1:,1:]
         coords = coords.astype('int')-1
 
+    brainRegionDict = {}
+    convertedBrainRegionDict = {}
     with open('/data/region_code.csv') as csvfile:
         csvR = csv.reader(csvfile)
         next(csvR)
@@ -196,10 +160,18 @@ def saveBrainRegion2npy():
         count = 0
         for row in csvR:
             coord = coords[count,:]
-            brainMat[coord[0],coord[1],coord[2]] = id2regionDict[int(row[1])]
+            rawID = int(row[1])
+            brainMat[coord[0],coord[1],coord[2]] = id2regionDict[rawID]
+            if rawID not in brainRegionDict:
+                brainRegionDict[rawID] = []
+                convertedBrainRegionDict[id2regionDict[rawID]+1] = []
+            brainRegionDict[rawID].append((coord[0],coord[1],coord[2]))
+            convertedBrainRegionDict[id2regionDict[rawID]+1].append((coord[0],coord[1],coord[2]))
             count += 1
 
-    np.save('/data/index2BrainRegion',brainMat)
+    np.save('/data/useful_npy/index2BrainRegion',brainMat)
+    pickle.dump(brainRegionDict, open('/data/useful_npy/rawBrainRegionID2Coords.p','wb'))
+    pickle.dump(convertedBrainRegionDict, open('/data/useful_npy/brainRegionID2Coords.p','wb'))
 
 def weights2Brain(weights):
     """
@@ -214,7 +186,7 @@ def weights2Brain(weights):
                             specified in 'weights'
     """
     brainMat = np.zeros(BRAIN_SZ)
-    index2region = np.load('/data/index2BrainRegion.npy')
+    index2region = np.load('/data/useful_npy/index2BrainRegion.npy')
     
     for x in range(BRAIN_SZ[0]):
         for y in range(BRAIN_SZ[1]):
@@ -289,6 +261,17 @@ def coolPics():
     # mat2visual(mat, [20,40,60], 'brain_regions.png', [0,1000])
 
     pass
+
+def blackOutVisualization(inputBrain):
+    weights = []
+    for region in range(BRAIN_REGION_SZ):
+        partialBrain = blackOutBrain(inputBrain, [region])
+
+        # push the partialBrain through the NN architecture
+        # weight = 
+        # weights.append(weight)
+
+    return weights2Brain(weights)
 
 import copy
 import itertools
@@ -371,5 +354,5 @@ def saliency_tf(metafile, chkptfile, sample, label):
     mat2visual(grad_vals[1], [20,40,60], 'autistic.png')
 
 if __name__ == '__main__':
-    #saveBrainRegion2npy()
-    pass
+    saveBrainRegion2npy()
+    #pass
