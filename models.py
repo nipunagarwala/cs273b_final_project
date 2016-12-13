@@ -322,7 +322,7 @@ class ConvNN(CNNLayers):
                 fcShapeConv = prev_layer.get_shape().as_list()
                 fcShapeConv = fcShapeConv[1:]
                 self.cnn_out_params = reduce(lambda x, y: x*y, fcShapeConv)
-                layersOut['layer'+str(i+1)+'-fc'] = tf.reshape( prev_layer, [self.batch_size, self.cnn_out_params])
+                layersOut['layer'+str(i+1)+'-fc'] = tf.reshape( prev_layer, [-1, self.cnn_out_params])
                 layersOut['cnn_out'] = layersOut['layer'+str(i+1)+'-fc']
                 prev_layer = layersOut['layer'+str(i+1)+'-fc']
                 layer_counter += 1

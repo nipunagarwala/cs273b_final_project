@@ -118,7 +118,7 @@ def create_conditions(args, FLAGS):
         else:
             binary_filelist = FLAGS.reduced_test_binaries
         # max_steps = 107
-        max_steps = 4
+        max_steps = 4 #4#30#150
     else:
         if args.model == 'ae':
             binary_filelist = FLAGS.ae_all_binaries
