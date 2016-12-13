@@ -235,6 +235,7 @@ def getGroupLabels(filename='/data/processed_phenotype_data.csv'):
                 controlIDs.append(int(row[0])) 
             else:
                 autismIDs.append(int(row[0])) 
+
     return sorted(autismIDs),sorted(controlIDs)
 
 def blackOutBrain(brainMat, brainRegions):
@@ -357,7 +358,7 @@ def augmentPatchworkPartial(numStealRegions):
     autistic,control = getGroupLabels()
 
     runList = []
-    for i in xrange(5,10):
+    for i in range(10):
         for a in autistic:
             runList.append((a,'/data/augmented_swap_partial_steal_%d/%d_autism_partially_patched_%d' 
                                % (numStealRegions,a,i),numStealRegions))
@@ -498,8 +499,6 @@ def prepreProcess():
         filepath = os.path.join(BRAIN_DIR,'original_%d.npy'%patientID)
         ALL_BRAINS.append(np.load(filepath))
 
-    BRAINID2COORDS = pickle.load(open('/data/useful_npy/brainRegionID2Coords.p','rb'))
-
     print 'done with preprocessing...'
 
 PHENOTYPE_FILE = os.path.abspath('/data/normalized_imputed_phenotype_data.csv')
@@ -616,8 +615,41 @@ def combineROITestJSON(filename, outPath, batchSz, reduction):
         json.dump(patientFiles[k],open(os.path.join(outPath,'roi_batchSz_%d_reduction_%d_test_patientID_%d.json'
                                        %(batchSz,reduction,k)),'w'))
 
+def split_list(idList, split_fraction):
+    # Calculate number of files to split
+    num_files = len(idList)
+    num_train = int(num_files * split_fraction)
+
+    # Permute files
+    perm = np.arange(num_files)
+    np.random.shuffle(perm)
+    idList = [idList[i] for i in perm]
+
+    # Split file list
+    train_files = idList[:num_train]
+    test_files = idList[num_train:]
+    return train_files,test_files
+
+def createBlackRegions(patientID):
+    autistic,control = getGroupLabels()
+    patLabel = 'autistic' if patientID in autistic else 'control'
+
+     # load the base brain
+    filepath = os.path.join(BRAIN_DIR,'original_%d.npy'%patientID)
+    brain = np.load(filepath)
+
+    for i in xrange(1,BRAIN_REGION_SZ+1):
+        blackBrain = blackOutBrain(brain, [i])
+        np.save('/data/blackoutBrains/%d_%s_region_%d'%(patientID,patLabel,i), blackBrain)
+
 if __name__ == '__main__':
+    for i in xrange(10,21):
+        print np.memmap(filename='/data/swap_partial_binaries_reduced/compressed_%d_autism_partially_patched_4.bin'%i, dtype='float32',mode='r',shape=1)
+    # BRAINID2COORDS = pickle.load(open('/data/useful_npy/brainRegionID2Coords.p','rb'))
+
     # prepreProcess()
+    # augmentPatchworkPartial(25)
+
     # func = batchROIData
     # mapList = list(xrange(1,1072))
 
@@ -662,6 +694,18 @@ if __name__ == '__main__':
     # generateJSON('/data/binaries_roi_batchSz_10_reduced_5', ['[0-9]+_roi','[0-9]+'], 'roi_batchSz_10_reduce_5', np.load('/data/useful_npy/roi_testPatientIDs.npy').tolist())
     # generateJSON('/data/binaries_roi_batchSz_10_reduced_6', ['[0-9]+_roi','[0-9]+'], 'roi_batchSz_10_reduce_6', np.load('/data/useful_npy/roi_testPatientIDs.npy').tolist())
 
-    combineROITestJSON('/data/test_roi_batchSz_10_reduce_4.json', '/data/roi_batchSz_10_reduction_4_test_json', 10, 4)
-    combineROITestJSON('/data/test_roi_batchSz_10_reduce_5.json', '/data/roi_batchSz_10_reduction_5_test_json', 10, 5)
-    combineROITestJSON('/data/test_roi_batchSz_10_reduce_6.json', '/data/roi_batchSz_10_reduction_6_test_json', 10, 6)
+    # combineROITestJSON('/data/test_roi_batchSz_10_reduce_4.json', '/data/roi_batchSz_10_reduction_4_test_json', 10, 4)
+    # combineROITestJSON('/data/test_roi_batchSz_10_reduce_5.json', '/data/roi_batchSz_10_reduction_5_test_json', 10, 5)
+    # combineROITestJSON('/data/test_roi_batchSz_10_reduce_6.json', '/data/roi_batchSz_10_reduction_6_test_json', 10, 6)
+
+    # import json
+    # import re
+
+    # testIDs = np.load('/data/useful_npy/testIDs_20_80_split.npy').tolist()
+    # filenames = os.listdir('/data/binaries_reduced2')
+    # testFilenames = []
+    # for f in filenames:
+    #     if int(re.search('[0-9]+',re.search('compressed_[0-9]+',f).group(0)).group()) in testIDs:
+    #         testFilenames.append('/data/binaries_reduced2/'+f)
+    
+    # json.dump(testFilenames,open('/data/test_20_80_split.json','w'))
