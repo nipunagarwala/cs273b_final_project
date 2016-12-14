@@ -144,6 +144,8 @@ def _generate_image_and_label_batch(image, data, label, min_queue_examples, batc
 			min_after_dequeue=min_queue_examples,
 			seed=273
 		)
+		# print dir(data)
+		print label_batch.name
 	else:
 		images, data, label_batch = tf.train.batch(
 			[image, data, label],

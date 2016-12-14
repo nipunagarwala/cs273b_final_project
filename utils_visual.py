@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 import math
 import argparse
 import create_brain_binaries
-#import tensorflow as tf
+import tensorflow as tf
 from sklearn.metrics import confusion_matrix
 
 from mpl_toolkits.axes_grid1 import make_axes_locatable
@@ -282,11 +282,12 @@ def jacobian(sess, x, grads, label, X):
     feed_dict = {x: X}
 
     # Initialize a numpy array to hold the Jacobian component values
-    jacobian_val = np.zeros((CLASS_NUM, X.shape[0], X.shape[1], X.shape[2]), dtype=np.float32)
+    jacobian_val = np.zeros((CLASS_NUM, X.shape[0], X.shape[1], X.shape[2], X.shape[3], X.shape[4]), dtype=np.float32)
 
+    print(X.shape)
     # Compute the gradients for all classes
     for class_ind, grad in enumerate(grads):
-        jacobian_val[class_ind] = sess.run(grad, feed_dict)
+        jacobian_val[class_ind, :, :, :, :, :] = sess.run(grad, feed_dict)
 
     return jacobian_val
 
