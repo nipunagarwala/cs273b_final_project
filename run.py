@@ -38,7 +38,7 @@ tf.app.flags.DEFINE_string('reduced_dir', '/data/binaries_reduced2',
 # Train, Test, all,
 tf.app.flags.DEFINE_string('reduced_train_binaries', '/data/swap_partial_train_reduced.json',#'/data/reduced_aug_blackout_train.json',#'/data/reduced_train2.json',
                            """File containing list of binary filenames used for training """)
-tf.app.flags.DEFINE_string('reduced_test_binaries', '/data/swap_partial_train_reduced.json',#'/data/reduced_test2.json',#'/data/reduced_train2.json', #'/data/reduced_test2.json',
+tf.app.flags.DEFINE_string('reduced_test_binaries', '/data/reduced_test2.json',#'/data/reduced_test2.json',#'/data/reduced_train2.json', #'/data/reduced_test2.json',
                            """File containing list of binary filenames used for testing """)
 tf.app.flags.DEFINE_string('reduced_all_binaries', '/data/reduced_all2.json',
                            """File containing list of all the binary filenames """)
@@ -63,7 +63,7 @@ def createVariables(train, binary_filelist, batch_size, input_dimensions):
     return X_image, X_data, Y, p_keep_conv
 
 
-def createAutoEncoderModel(data, output, p_keep_conv, batch_size):
+def createAutoEncoderModel(data, output, p_keep_conv, batch_size, phase_train):
 
     # hyperparameters
     learning_rate = AE_LEARNING_RATE
@@ -96,7 +96,7 @@ def createAutoEncoderModel(data, output, p_keep_conv, batch_size):
 
     print("Building the Autoencoder Model")
     layer_outputs, weights, weight_shapes, encode, decode, pheno_data, label \
-                = ae.build_model(hidden_units, allRelu, allBatch)
+                = ae.build_model(hidden_units, allRelu, allBatch, phase_train)
 
     print("Setting up the Training model of the Autoencoder")
     cost, train_op = ae.train()
@@ -105,7 +105,7 @@ def createAutoEncoderModel(data, output, p_keep_conv, batch_size):
                         pheno_data, label, cost, train_op
 
 
-def createConvAutoEncoderModel(image, output, p_keep_conv,batch_size):
+def createConvAutoEncoderModel(image, output, p_keep_conv, batch_size, phase_train):
 
     # hyperparameters
     filter_sz = CAE_FILTER_SZ
@@ -154,7 +154,7 @@ def createConvAutoEncoderModel(image, output, p_keep_conv,batch_size):
     print("Building the Convolutional Autoencoder Model")
     layer_outputs, weights, encode, \
     decode, brain_image = cae.build_model(numForwardLayers,
-                            allFilters, allStrides, allNames, allRelu, allBatch)
+                            allFilters, allStrides, allNames, allRelu, allBatch, phase_train)
 
 
     print("Setting up the Training model of the Autoencoder")
@@ -163,7 +163,7 @@ def createConvAutoEncoderModel(image, output, p_keep_conv,batch_size):
                         brain_image, cost, train_op
 
 
-def createCNNModel(image, output, p_keep_conv,batch_size, multiModal=False):
+def createCNNModel(image, output, p_keep_conv,batch_size, phase_train, multiModal=False):
 
     numLayers = 8
     regConstants = [0.6]*numLayers
@@ -177,7 +177,8 @@ def createCNNModel(image, output, p_keep_conv,batch_size, multiModal=False):
 
     # layersOut, weights =  deepCnn.build_model(True, False)
     layersOut, weights =  deepCnn.build_model(CONV_ARCH, CNN_NUM_LAYERS, CNN_NUM_FC_LAYERS,
-                        CNN_FILTER_SZ, CNN_NUM_FILTERS, CNN_STRIDE_SZ, CNN_POOL_SZ, CNN_POOL_STRIDE_SZ, CNN_BATCH_NORM)
+                        CNN_FILTER_SZ, CNN_NUM_FILTERS, CNN_STRIDE_SZ, CNN_POOL_SZ,
+                        CNN_POOL_STRIDE_SZ, CNN_BATCH_NORM, phase_train)
 
     if multiModal:
         # return layersOut, weights, image, data, label
@@ -189,7 +190,7 @@ def createCNNModel(image, output, p_keep_conv,batch_size, multiModal=False):
     return layersOut, weights, cost, train_op
 
 
-def createVanillaNN(data, output, p_keep_conv,batch_size, multiModal=False):
+def createVanillaNN(data, output, p_keep_conv,batch_size, phase_train, multiModal=False):
 
     learning_rate = NN_LEARNING_RATE
     beta1 = NN_BETA_1
@@ -209,8 +210,8 @@ def createVanillaNN(data, output, p_keep_conv,batch_size, multiModal=False):
 
 
     print("Building the Vanilla Neural Network Model")
-    layersOut, weights = deepNN.build_model(len(NN_HIDDEN_UNITS), hidden_units, sigmoidOn,
-                                    batchOn, NN_MMLAYER)
+    layersOut, weights = deepNN.build_model(len(NN_HIDDEN_UNITS), hidden_units, phase_train,
+                                    sigmoidOn, batchOn, NN_MMLAYER)
 
     if multiModal:
         return layersOut, weights
@@ -221,7 +222,7 @@ def createVanillaNN(data, output, p_keep_conv,batch_size, multiModal=False):
     return layersOut, weights, cost, train_op
 
 
-def createMultiModalNN(image, data, output, p_keep_conv, batch_size):
+def createMultiModalNN(image, data, output, p_keep_conv, batch_size, phase_train):
 
     # layersCnn, weightsCnn, image, data, label = createCNNModel(train, binary_filelist, input_dimensions, batch_size, True)
     layersCnn, weightsCnnl = createCNNModel(image, output, p_keep_conv,batch_size, True)
@@ -246,7 +247,8 @@ def createMultiModalNN(image, data, output, p_keep_conv, batch_size):
 
 
     print("Building the Multi Modal NN Model")
-    layersOut, weights = deepMultiNN.build_model(numLayers, hidden_units, True, MMNN_BATCH_NORM)
+    layersOut, weights = deepMultiNN.build_model(numLayers, hidden_units, phase_train,
+                                                True, MMNN_BATCH_NORM)
 
     print("Setting up the Training model of the Multi Modal NN Model")
     cost, train_op = deepMultiNN.train()
@@ -268,24 +270,25 @@ def run_model(train, model, binary_filelist, run_all, batch_size, max_steps, ove
     else:
         input_dimensions = [31, 37, 31]
 
-    # image, data, output, p_keep_conv = createVariables(train, binary_filelist, batch_size, input_dimensions)
-    image = tf.placeholder(dtype=tf.float32, shape=(None, 31, 37, 31, 1))
-    data = tf.placeholder(dtype=tf.float32, shape=(None, 29))
-    output = tf.placeholder(dtype=tf.float32, shape=(None, 1))
-    p_keep_conv = tf.placeholder(dtype=tf.float32)
+    image, data, output, p_keep_conv = createVariables(train, binary_filelist, batch_size, input_dimensions)
+    phase_train = tf.placeholder(tf.bool, name='phase_train')
+    # image = tf.placeholder(dtype=tf.float32, shape=(None, 31, 37, 31, 1))
+    # data = tf.placeholder(dtype=tf.float32, shape=(None, 29))
+    # output = tf.placeholder(dtype=tf.float32, shape=(None, 1))
+    # p_keep_conv = tf.placeholder(dtype=tf.float32)
 
     if model == 'ae':
         layer_outputs, weights, encode, decode, \
-        pheno_data, label, cost, train_op = createAutoEncoderModel(data, output, p_keep_conv, batch_size)
+        pheno_data, label, cost, train_op = createAutoEncoderModel(data, output, p_keep_conv, batch_size, phase_train)
     elif model == 'cae':
         layer_outputs, weights, encode, decode, brain_image, \
-        cost, train_op = createConvAutoEncoderModel(image, output, p_keep_conv, batch_size)
+        cost, train_op = createConvAutoEncoderModel(image, output, p_keep_conv, batch_size, phase_train)
     elif model == 'cnn':
-        layer_outputs, weights, cost, train_op = createCNNModel(image, output, p_keep_conv, batch_size)
+        layer_outputs, weights, cost, train_op = createCNNModel(image, output, p_keep_conv, batch_size, phase_train)
     elif model == 'nn':
-        layer_outputs, weights, cost, train_op = createVanillaNN(data, output, p_keep_conv, batch_size)
+        layer_outputs, weights, cost, train_op = createVanillaNN(data, output, p_keep_conv, batch_size, phase_train)
     elif model == 'mmnn':
-        layer_outputs, weights, cost, train_op = createMultiModalNN(image, data, output, p_keep_conv, batch_size)
+        layer_outputs, weights, cost, train_op = createMultiModalNN(image, data, output, p_keep_conv, batch_size, phase_train)
     else:
         print("Kindly put in the correct model")
 
@@ -301,7 +304,7 @@ def run_model(train, model, binary_filelist, run_all, batch_size, max_steps, ove
     print ckpt_list
 
     # Only use latest checkpoint
-    ckpt_list = [ckpt_list[-1]]
+    # ckpt_list = [ckpt_list[-1]]
 
     with open('checkpoint_results.csv', 'a') as csvfile:
         writer = csv.writer(csvfile)
@@ -318,8 +321,8 @@ def run_model(train, model, binary_filelist, run_all, batch_size, max_steps, ove
                     init_op = tf.group(tf.initialize_all_variables(), tf.initialize_local_variables())
                     init_op.run()
 
-                # coord = tf.train.Coordinator()
-                # tf.train.start_queue_runners(coord=coord, sess=sess)
+                coord = tf.train.Coordinator()
+                tf.train.start_queue_runners(coord=coord, sess=sess)
 
                 # # Visualization of Distorted inputs
                 # distorted_image = np.asarray(sess.run(image))
@@ -333,91 +336,99 @@ def run_model(train, model, binary_filelist, run_all, batch_size, max_steps, ove
                 targets = []
                 avg_acc = 0
 
-                # Feed dict testing
-                with open(binary_filelist, 'r') as testing:
-                    list_test = json.load(testing)
-
-                for f in list_test:
-                    print f
-                    LABEL_SZ = 1
-                    PHENO_SZ = 29
-                    X_SZ = 31
-                    Y_SZ = 37
-                    Z_SZ = 31
-
-                    bz = 32 #32
-                    label = np.memmap(filename=f, dtype='float32',
-                                      mode='r', offset=0, shape=1)
-                    temp_label = label.reshape((1,1))
-                    new_label = np.zeros((bz, 1))
-                    for i in xrange(bz):
-                        new_label[i, 0] = temp_label
-
-                    brain = create_brain_binaries._normalize_brain(np.memmap(filename=f, dtype='float32',
-                                      mode='r', offset=(LABEL_SZ+PHENO_SZ)*4, shape=(X_SZ,Y_SZ,Z_SZ)))
-                    brain = brain.reshape((1, X_SZ,Y_SZ,Z_SZ, 1))
-                    mat2visual(brain[0, :, :, :, 0], [10, 15, 19], 'distortedImage.png', 'auto')
-                    new_brain = np.zeros((32, X_SZ,Y_SZ,Z_SZ, 1))
-                    for i in xrange(bz):
-                        new_brain[i, :, :, :, :] = brain
-
-                    feed_dict = {image: new_brain, output: new_label, p_keep_conv: 1.0}
-
-                    pred, loss, targ = sess.run([layer_outputs['pred'], cost, output], feed_dict=feed_dict)
-                    p = np.argmax(pred, axis=1).flatten().tolist()[0]
-
-                    print targ[0, 0] == label
-                    print "Prediction Probabilities are: " + str(pred[0, :])
-                    print "Predictions are: " + str(p)
-                    print "Target are:      " + str(targ[0, 0])
-                    print "Loss:            " + str(loss)
-                    predictions.append(p)
-                    targets.append(targ[0, 0])
-
-
-                # for i in range(i_stopped, max_steps):
-                #     print("Running iteration {} of TF Session".format(i))
-                #     if model == 'cae' or model == 'ae':
-                #         if train:
-                #             _, loss = sess.run([train_op, cost])
-                #         else:
-                #             loss = sess.run(cost)
-                #     else:
-                #         if train:
-                #             _, pred, loss, targ = sess.run([train_op, layer_outputs['pred'], cost, output])
-                #             print "Prediction Probabilities are: " + str(pred)
-                #             predictions = np.argmax(pred, axis=1)
-                #             targets = targ.flatten().astype(int)
-                #             print "Predictions are: " + str(predictions)
-                #             print "Target are:      " + str(targets)
-                #             compute_statistics(targets, predictions)
-                #         else:
-                #             pred, loss, targ = sess.run([layer_outputs['pred'], cost, output])
-                #             print "Prediction Probabilities are: " + str(pred)
-                #             p = np.argmax(pred, axis=1).flatten().tolist()
-                #             print "Predictions are: " + str(p)
-                #             print "Target are:      " + str(targ.flatten().tolist())
-                #             predictions.extend(p)
-                #             targets.extend(targ.flatten().tolist())
-                #             _, acc, _, _, _ = compute_statistics(targ.flatten().tolist(), p)
-                #             avg_acc += acc
+                # # Feed dict testing
+                # with open(binary_filelist, 'r') as testing:
+                #     list_test = json.load(testing)
                 #
-                #     print("The current loss is: " + str(loss))
+                # LABEL_SZ = 1
+                # PHENO_SZ = 29
+                # X_SZ = 31
+                # Y_SZ = 37
+                # Z_SZ = 31
+                # for i in xrange(max_steps):
+                #     print "Running epoch: " + str(i)
+                #     count = 0
+                #     for f in list_test:
+                #         print "Running example: " + str(count)
+                #         label = np.memmap(filename=f, dtype='float32',
+                #                           mode='r', offset=0, shape=1)
+                #         temp_label = label.reshape((1,1))
+                #         new_label = np.zeros((batch_size, 1))
+                #         for j in xrange(batch_size):
+                #             new_label[j, 0] = temp_label
                 #
-                #     # Checkpoint model at each 100 iterations
-                #     should_save = i != 0 and i % 50 == 0 or (i+1) == max_steps
-                #     if should_save and train:
-                #         checkpoint_path = os.path.join(FLAGS.checkpoint_dir, 'model.ckpt')
-                #         saver.save(sess, checkpoint_path, global_step=i)
+                #         brain = create_brain_binaries._normalize_brain(np.memmap(filename=f, dtype='float32',
+                #                           mode='r', offset=(LABEL_SZ+PHENO_SZ)*4, shape=(X_SZ,Y_SZ,Z_SZ)))
+                #         brain = brain.reshape((1, X_SZ,Y_SZ,Z_SZ, 1))
+                #         mat2visual(brain[0, :, :, :, 0], [10, 15, 19], 'distortedImage.png', 'auto')
+                #         new_brain = np.zeros((32, X_SZ,Y_SZ,Z_SZ, 1))
+                #         for j in xrange(batch_size):
+                #             new_brain[i, :, :, :, :] = brain
                 #
-                #     # If running all files for CAE
-                #     if not train and run_all and model == 'cae':
-                #         bin_path = create_CEA_reduced_binary(sess, encode, output,
-                #                                             data, FLAGS, i)
-                #         compressed_filelist.append(bin_path)
+                #         feed_dict = {image: new_brain, output: new_label, p_keep_conv: 1.0}
                 #
-                # coord.request_stop()
-                # coord.join(stop_grace_period_secs=10)
+                #         pred, loss, targ = sess.run([layer_outputs['pred'], cost, output], feed_dict=feed_dict)
+                #         p = np.argmax(pred, axis=1).flatten().tolist()[0]
+                #
+                #         print "Prediction Probabilities are: " + str(pred[0, :])
+                #         print "Predictions are: " + str(p)
+                #         print "Target are:      " + str(targ[0, 0])
+                #         print "Loss:            " + str(loss)
+                #         predictions.append(p)
+                #         targets.append(targ[0, 0])
+                #
+                #         count += 1
+
+                feed_dict = {phase_train: train}
+                for i in range(i_stopped, max_steps):
+                    print("Running iteration {} of TF Session".format(i))
+                    if model == 'cae' or model == 'ae':
+                        if train:
+                            _, loss = sess.run([train_op, cost], feed_dict=feed_dict)
+                        else:
+                            loss = sess.run(cost, feed_dict=feed_dict)
+                    else:
+                        if train:
+                            _, pred, loss, targ = sess.run([train_op, layer_outputs['pred'], cost, output], feed_dict=feed_dict)
+                            print "Prediction Probabilities are: " + str(pred)
+                            predictions = np.argmax(pred, axis=1)
+                            targets = targ.flatten().astype(int)
+                            print "Predictions are: " + str(predictions)
+                            print "Target are:      " + str(targets)
+                            compute_statistics(targets, predictions)
+                        else:
+                            pred, loss, targ = sess.run([layer_outputs['pred'], cost, output], feed_dict=feed_dict)
+                            print "Prediction Probabilities are: " + str(pred)
+                            p = np.argmax(pred, axis=1).flatten().tolist()
+                            print "Predictions are: " + str(p)
+                            print "Target are:      " + str(targ.flatten().tolist())
+                            predictions.extend(p)
+                            targets.extend(targ.flatten().tolist())
+                            _, acc, _, _, _ = compute_statistics(targ.flatten().tolist(), p)
+                            avg_acc += acc
+
+                    print("The current loss is: " + str(loss))
+
+                    # Checkpoint model at each 100 iterations
+                    should_save = i != 0 and i % 200 == 0 or (i+1) == max_steps
+                    if should_save and train:
+                        checkpoint_path = os.path.join(FLAGS.checkpoint_dir, 'model.ckpt')
+                        saver.save(sess, checkpoint_path, global_step=i)
+
+                    # If running all files for CAE
+                    if not train and run_all and model == 'cae':
+                        bin_path = create_CEA_reduced_binary(sess, encode, output,
+                                                            data, FLAGS, i)
+                        compressed_filelist.append(bin_path)
+
+                coord.request_stop()
+                coord.join(stop_grace_period_secs=10)
+
+                    # # Checkpoint model at each 100 iterations
+                    # should_save = i != 0 and i % 5 == 0 or (i+1) == max_steps
+                    # if should_save and train:
+                    #     checkpoint_path = os.path.join(FLAGS.checkpoint_dir, 'model.ckpt')
+                    #     saver.save(sess, checkpoint_path, global_step=i)
 
                 if not train and model != 'cae' and model != 'ae':
                     # predictions = predictions[:107]
