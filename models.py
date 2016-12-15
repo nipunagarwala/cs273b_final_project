@@ -23,7 +23,7 @@ class NeuralNetwork(CNNLayers):
         self.b_lmbda = b_lmbda
         self.op = op
 
-    def build_model(self, num_layers, hidden_units, sigmoid=True, batch_norm=True, in_multiModal=True):
+    def build_model(self, num_layers, hidden_units, phase_train, sigmoid=True, batch_norm=True, in_multiModal=True):
         weights = {}
         layersOut = {}
         biases = {}
@@ -34,11 +34,11 @@ class NeuralNetwork(CNNLayers):
 
         prev_shape = (prev_layer.get_shape().as_list())[1]
         for i in range(num_layers-1):
-            layersOut['layer'+str(i+1)] ,weights['w'+str(i+1)], biases['w'+str(i+1)] = self.fcLayer(prev_layer, [prev_shape, hidden_units[i]], sigmoid, batch_norm)
+            layersOut['layer'+str(i+1)] ,weights['w'+str(i+1)], biases['w'+str(i+1)] = self.fcLayer(prev_layer, [prev_shape, hidden_units[i]], phase_train, sigmoid, batch_norm)
             prev_shape = hidden_units[i]
             prev_layer = layersOut['layer'+str(i+1)]
 
-        layersOut['layer'+str(num_layers)] ,weights['w'+str(num_layers)], biases['w'+str(num_layers)] = self.fcLayer(prev_layer, [prev_shape, hidden_units[num_layers-1]], False, False)
+        layersOut['layer'+str(num_layers)] ,weights['w'+str(num_layers)], biases['w'+str(num_layers)] = self.fcLayer(prev_layer, [prev_shape, hidden_units[num_layers-1]], phase_train, False, False)
         layersOut['output_values'] = layersOut['layer'+str(num_layers)]
         layersOut['pred'] = tf.nn.softmax(layersOut['output_values'], dim=-1, name=None)
         layersOut['fc-mmnn'] = layersOut['layer'+str(in_multiModal)]
@@ -84,7 +84,7 @@ class AutoEncoder(CNNLayers):
         self.op = op
 
 
-    def build_model(self, hidden_units, relu, batch_norm):
+    def build_model(self, hidden_units, relu, batch_norm, phase_train):
         weights = {}
         biases = {}
         layer_outputs = {}
@@ -101,7 +101,7 @@ class AutoEncoder(CNNLayers):
 
         for i in range(len(hidden_units)):
             layer_outputs['layer'+str(i+1)], weights['w'+str(i+1)], biases['w'+str(i+1)] \
-                    = self.fcLayer(prev_layer, unit_sizes[i:i+2], relu[i], batch_norm[i])
+                    = self.fcLayer(prev_layer, unit_sizes[i:i+2], phase_train, relu[i], batch_norm[i])
             prev_layer = layer_outputs['layer'+str(i+1)]
             print unit_sizes[i:i+2]
 
@@ -115,7 +115,7 @@ class AutoEncoder(CNNLayers):
         for i in range(len(hidden_units), tot):
             layer_outputs['layer'+str(i+1)], weights['w'+str(i+1)], biases['w'+str(i+1)] \
                     = self.fcLayer(prev_layer, unit_sizes[i-len(hidden_units):i-len(hidden_units)+2],
-                                   relu[i], batch_norm[i])
+                                   phase_train, relu[i], batch_norm[i])
             prev_layer = layer_outputs['layer'+str(i+1)]
             print unit_sizes[i-len(hidden_units):i-len(hidden_units)+2]
 
@@ -162,7 +162,7 @@ class ConvAutoEncoder(CNNLayers):
         self.op = op
 
 
-    def build_model(self, num_layers_encode, filters, strides, names, relu, batch_norm):
+    def build_model(self, num_layers_encode, filters, strides, names, relu, batch_norm, phase_train):
         weights = {}
         biases = {}
         layer_outputs = {}
@@ -176,7 +176,7 @@ class ConvAutoEncoder(CNNLayers):
         layer_shapes['w0'] =  self.input_image.get_shape().as_list()
 
         for i in range(num_layers_encode):
-            layer_outputs['layer'+str(i+1)] ,weights['w'+str(i+1)], biases['b'+str(i+1)] = self.conv_layer( prev_layer, filters[i], strides[i], names[i], '3d', 'SAME', relu[i], batch_norm[i])
+            layer_outputs['layer'+str(i+1)] ,weights['w'+str(i+1)], biases['b'+str(i+1)] = self.conv_layer( prev_layer, filters[i], strides[i], names[i], phase_train, '3d', 'SAME', relu[i], batch_norm[i])
             prev_layer = layer_outputs['layer'+str(i+1)]
             layer_shapes['w'+str(i+1)] = prev_layer.get_shape().as_list()
 
@@ -188,7 +188,7 @@ class ConvAutoEncoder(CNNLayers):
         tot = 2*num_layers_encode #4 layers
         for i in range(num_layers_encode, tot):
             print(filters[tot-i-1])
-            layer_outputs['layer'+str(i+1)] ,weights['w'+str(i+1)],biases['b'+str(i+1)] = self.deconv_layer(prev_layer,filters[tot-i-1], layer_shapes['w'+str(tot-i-1)], strides[tot-i-1], names[i], '3d', 'SAME', relu[i], batch_norm[i])
+            layer_outputs['layer'+str(i+1)] ,weights['w'+str(i+1)],biases['b'+str(i+1)] = self.deconv_layer(prev_layer,filters[tot-i-1], layer_shapes['w'+str(tot-i-1)], strides[tot-i-1], names[i], phase_train, '3d', 'SAME', relu[i], batch_norm[i])
             prev_layer = layer_outputs['layer'+str(i+1)]
             layer_shapes['w'+str(i+1)] = prev_layer.get_shape().as_list()
 
@@ -233,7 +233,8 @@ class ConvNN(CNNLayers):
         # self.output = tf.reshape(self.output, [1,self.batch_size], name=None)
 
     def build_model(self, conv_arch, cnn_num_layers, cnn_num_fc_layers,
-                        cnn_filter_sz, cnn_num_filters, cnn_stride_sz, cnn_pool_sz, cnn_pool_stride_sz, cnn_batch_norm):
+                        cnn_filter_sz, cnn_num_filters, cnn_stride_sz, cnn_pool_sz,
+                        cnn_pool_stride_sz, cnn_batch_norm, phase_train):
 
         weights = {}
         layersOut = {}
@@ -259,7 +260,7 @@ class ConvNN(CNNLayers):
             if conv_arch[i] == 'conv':
                 w_name = 'layer'+str(i+1)+'_filters'
                 layersOut['layer'+str(i+1)] ,weights['w'+str(i+1)], biases['b'+str(i+1)]= self.conv_layer(prev_layer, [ftlr_sz, ftlr_sz, ftlr_sz, prev_layer_fltr ,layer_num_ftlr ],
-                                     [1 , ftlr_str_sz , ftlr_str_sz , ftlr_str_sz, 1], w_name, '3d','SAME', True, cnn_batch_norm)
+                                     [1 , ftlr_str_sz , ftlr_str_sz , ftlr_str_sz, 1], w_name, phase_train, '3d','SAME', True, cnn_batch_norm)
 
                 prev_layer_fltr = layer_num_ftlr
                 print("This is the Convolutional Layer")
@@ -281,7 +282,7 @@ class ConvNN(CNNLayers):
                 fcShapeConv = prev_layer.get_shape().as_list()
                 fcShapeConv = fcShapeConv[1:]
                 self.cnn_out_params = reduce(lambda x, y: x*y, fcShapeConv)
-                layersOut['layer'+str(i+1)+'-fc'] = tf.reshape( prev_layer, [self.batch_size, self.cnn_out_params])
+                layersOut['layer'+str(i+1)+'-fc'] = tf.reshape( prev_layer, [-1, self.cnn_out_params])
                 layersOut['cnn_out'] = layersOut['layer'+str(i+1)+'-fc']
                 prev_layer = layersOut['layer'+str(i+1)+'-fc']
                 layer_counter += 1
@@ -296,7 +297,7 @@ class ConvNN(CNNLayers):
                 sigm = True if (num_fc_done < cnn_num_fc_layers-1) else False
                 batchn = True if (num_fc_done < cnn_num_fc_layers-1) else False
                 layersOut['layer'+str(i+1)] ,weights['w'+str(i+1)], biases['b'+str(i+1)] = self.fcLayer(prev_layer,
-                                                    [in_weights , out_weights], sigm, batchn)
+                                                    [in_weights , out_weights], phase_train, sigm, batchn)
                 num_fc_done += 1
                 print("This is the FC NN Layer")
                 print("This is the shape of the outputs of this layer: " + str(layersOut['layer'+str(i+1)].get_shape().as_list()))
@@ -351,7 +352,7 @@ class MultiModalNN(CNNLayers):
         self.beta2 = beta2
         self.op = op
 
-    def build_model(self, num_layers, hidden_units, sigmoid=True, batch_norm=True):
+    def build_model(self, num_layers, hidden_units, phase_train, sigmoid=True, batch_norm=True):
 
         cnn_shape = self.cnn_out.get_shape().as_list()
         fcnet_shape = self.fcnet_out.get_shape().as_list()
@@ -370,7 +371,7 @@ class MultiModalNN(CNNLayers):
         for i in range(num_layers):
             lastSigm = True if i < (num_layers-1) else False
             lastBatch = True if i < (num_layers-1) else False
-            layersOut['layer'+str(i+1)] ,weights['w'+str(i+1)] , biases['b'+str(i+1)]= self.fcLayer(prev_layer, [prev_shape, hidden_units[i]], lastSigm, lastBatch)
+            layersOut['layer'+str(i+1)] ,weights['w'+str(i+1)] , biases['b'+str(i+1)]= self.fcLayer(prev_layer, [prev_shape, hidden_units[i]], phase_train, lastSigm, lastBatch)
             prev_shape = hidden_units[i]
             prev_layer = layersOut['layer'+str(i+1)]
 
@@ -399,31 +400,30 @@ class MultiModalNN(CNNLayers):
         return cumCost, train_op
 
 
-# class ResidualNet(CNNLayers):
-    # def __init__(self, image, output, p_keep_conv, numResUnits, batch_size=1, learning_rate=1e-3, beta1=0.99, beta2=0.99, w_lmbda = None, b_lmbda = None, op='Rmsprop'):
-    #     CNNLayers.__init__(self)
-    #     self.input_image = image
-    #     self.output = output
-    #     self.dropout = p_keep_conv
-    #     self.numResUnits = numResUnits
+class ResidualNet(CNNLayers):
+    def __init__(self, image, output, p_keep_conv, numResUnits, batch_size=1, learning_rate=1e-3, beta1=0.99, beta2=0.99, w_lmbda = None, b_lmbda = None, op='Rmsprop'):
+        CNNLayers.__init__(self)
+        self.input_image = image
+        self.output = output
+        self.dropout = p_keep_conv
+        self.numResUnits = numResUnits
 
-    #     self.batch_size = batch_size
-    #     self.learning_rate = learning_rate
-    #     self.beta1 = beta1
-    #     self.beta2 = beta2
-    #     self.w_lmbda = w_lmbda
-    #     self.b_lmbda = b_lmbda
-    #     self.op = op
+        self.batch_size = batch_size
+        self.learning_rate = learning_rate
+        self.beta1 = beta1
+        self.beta2 = beta2
+        self.w_lmbda = w_lmbda
+        self.b_lmbda = b_lmbda
+        self.op = op
 
-    # def build_custom_units(self, resUnitNames, resUnitFilters, resUnitStrides):
-    #     pass
+    def build_custom_units(self, resUnitNames, resUnitFilters, resUnitStrides):
+        pass
 
-    # def build_model(self, in_conv_filter,in_conv_stride, in_pool, in_pool_stride, resUnit_filter, resUnit_filter_stride, resUnit_pool,
-    #                     resUnit_pool_stride, resUnit, numFilter ):
-    #     weights = {}
-    #     layersOut = {}
-    #     biases = {}
+    def build_model(self, in_conv_filter,in_conv_stride, in_pool, in_pool_stride, resUnit_filter, resUnit_filter_stride, resUnit_pool,
+                        resUnit_pool_stride, resUnit, numFilter ):
+        weights = {}
+        layersOut = {}
+        biases = {}
 
-    #     layersOut['input'] = self.input_image
-    #     layersOut['output'] = self.output
-
+        layersOut['input'] = self.input_image
+        layersOut['output'] = self.output

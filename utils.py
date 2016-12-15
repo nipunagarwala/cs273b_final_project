@@ -85,7 +85,7 @@ def extract_parser():
     data_group.add_argument('--test', action="store_true", help='Testing the model')
     network_group.add_argument('--model', choices=['ae', 'cae', 'cnn', 'nn', 'mmnn'],
                         default='mmnn', help='Select model to run.')
-    parser.add_argument('--chkPointDir', dest='chkPt', default='/data/ckpt',
+    parser.add_argument('--chkPointDir', dest='chkPt', default='/data/axel_ckpt/cnn_swap_partial_NOT_WORKING',
                         help='Directory to save the checkpoints. Default is /data/ckpt')
     parser.add_argument('--numIters', dest='numIters', default=200, type=int,
                         help='Number of Training Iterations. Default is 200')
@@ -96,8 +96,8 @@ def extract_parser():
 
 def create_conditions(args, FLAGS):
     binary_filelist = None
-    # batch_size = 1
-    batch_size = 32
+    batch_size = 1
+    # batch_size = 32
     max_steps = 1071
     run_all = False
 
@@ -109,6 +109,7 @@ def create_conditions(args, FLAGS):
         else:
             binary_filelist = FLAGS.reduced_train_binaries
         batch_size = 32
+        # batch_size = 1
         max_steps = args.numIters
     elif args.test: # We have 108 train patients
         if args.model == 'ae':
@@ -118,7 +119,7 @@ def create_conditions(args, FLAGS):
         else:
             binary_filelist = FLAGS.reduced_test_binaries
         # max_steps = 107
-        max_steps = 4
+        max_steps = 4 #4#30#150
     else:
         if args.model == 'ae':
             binary_filelist = FLAGS.ae_all_binaries

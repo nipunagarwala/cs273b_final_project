@@ -48,19 +48,30 @@ class Layers(object):
         return next_layer
 
 
-    def batch_norm(self, prev_layer, axes, beta_shape,scale_shape, var_eps = 1e-6):
+    def batch_norm(self, prev_layer, axes, beta_shape, scale_shape, phase_train, var_eps = 1e-6):
+        def mean_var_with_update():
+            ema_apply_op = ema.apply([mu, sigma])
+            with tf.control_dependencies([ema_apply_op]):
+                return tf.identity(mu), tf.identity(sigma)
+
         mu, sigma = tf.nn.moments(prev_layer, axes)
         beta = self.init_weights(beta_shape)
         scale = self.init_weights(scale_shape)
-        next_layer = tf.nn.batch_normalization(prev_layer, mu, sigma, beta, scale, var_eps)
+        ema = tf.train.ExponentialMovingAverage(decay=0.5)
+        mean, var = tf.cond(phase_train,
+                            mean_var_with_update,
+                            lambda: (ema.average(mu), ema.average(sigma)))
+
+        next_layer = tf.nn.batch_normalization(prev_layer, mean, var, beta, scale, var_eps) #1e-3)
+        # next_layer = tf.nn.batch_normalization(prev_layer, mu, sigma, beta, scale, var_eps)
         return next_layer
 
-    def fcLayer(self, prev_layer, wshape, sigmoid=True, batch_norm=False):
+    def fcLayer(self, prev_layer, wshape, phase_train, sigmoid=True, batch_norm=False):
         wOut = self.init_weights(wshape)
         b = self.init_weights([wshape[1]])
         next_layer = tf.add(tf.matmul(prev_layer, wOut), b)
         if batch_norm:
-            next_layer = self.batch_norm(next_layer,[0],[wshape[1]],[wshape[1]] )
+            next_layer = self.batch_norm(next_layer, [0], [wshape[1]], [wshape[1]], phase_train)
         if sigmoid:
             next_layer = self.relu(next_layer)
 
@@ -145,7 +156,7 @@ class CNNLayers(Layers):
     def __init__(self):
         Layers.__init__(self)
 
-    def conv_layer(self, prev_layer_out, w_shape, layer_stride, w_name, num_dim = '2d', padding='SAME',if_relu = True, batchNorm = True):
+    def conv_layer(self, prev_layer_out, w_shape, layer_stride, w_name, phase_train, num_dim = '2d', padding='SAME',if_relu = True, batchNorm = True):
         w_conv = self.init_weights(w_shape)
 
         numFilters = w_shape[len(w_shape)-1]
@@ -160,7 +171,7 @@ class CNNLayers(Layers):
                             strides=layer_stride, padding=padding,name=w_name),b)
 
         if batchNorm:
-            nextLayer = self.batch_norm(nextLayer, [0,1,2,3], [numFilters], [numFilters])
+            nextLayer = self.batch_norm(nextLayer, [0,1,2,3], [numFilters], [numFilters], phase_train)
 
         if if_relu:
             nextLayer = self.relu(nextLayer)
@@ -169,7 +180,7 @@ class CNNLayers(Layers):
         return nextLayer, w_conv, b
 
 
-    def deconv_layer(self, prev_layer_out, filter_shape, out_shape, layer_stride, w_name, num_dim = '2d',padding='SAME', if_relu = True, batchNorm = True):
+    def deconv_layer(self, prev_layer_out, filter_shape, out_shape, layer_stride, w_name, phase_train, num_dim = '2d',padding='SAME', if_relu = True, batchNorm = True):
         w_deconv = self.init_weights(filter_shape)
 
         numFilters =filter_shape[len(filter_shape)-2]
@@ -185,7 +196,7 @@ class CNNLayers(Layers):
                             strides=layer_stride, padding=padding),b)
 
         if batchNorm:
-            nextLayer = self.batch_norm(nextLayer, [0,1,2,3], [numFilters], [numFilters])
+            nextLayer = self.batch_norm(nextLayer, [0,1,2,3], [numFilters], [numFilters], phase_train)
 
         if if_relu:
             nextLayer = self.relu(nextLayer)

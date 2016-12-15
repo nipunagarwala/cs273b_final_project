@@ -3,8 +3,8 @@ import numpy as np
 import json
 
 # Train and evaliation epoch definition
-NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN = 1000
-NUM_EXAMPLES_PER_EPOCH_FOR_EVAL = 200
+NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN = 10000
+NUM_EXAMPLES_PER_EPOCH_FOR_EVAL = 2000 #200
 
 # Pixels to crop in each dimensions
 CROP = 4
@@ -120,7 +120,7 @@ def read_binary(filename_queue, dimensions):
 	result.label = tf.slice(record_bytes, [0], [label_bytes])
 
 	# Extract data
-	data_raw = tf.slice(record_bytes, [label_bytes], [data_bytes])
+	data_raw = tf.slice(record_bytes, [label_bytes], [label_bytes + data_bytes])
 	result.data = tf.reshape(data_raw, [data_bytes, 1])
 
 	# Extract image
@@ -133,14 +133,14 @@ def read_binary(filename_queue, dimensions):
 def _generate_image_and_label_batch(image, data, label, min_queue_examples, batch_size, shuffle):
 	# Create queue that shuffles examples and reads 'batch_size' images/labels from queue
 	train_preprocess_threads = 16
-	test_preprocess_threads = 1         # TODO: subject to change- explain
+	test_preprocess_threads = 1
 
 	if shuffle:
 		images, data, label_batch = tf.train.shuffle_batch(
 			[image, data, label],
 			batch_size=batch_size,
 			num_threads=train_preprocess_threads,
-			capacity=min_queue_examples + 3 * batch_size, #TODO: subject to change
+			capacity=min_queue_examples + 3 * batch_size,
 			min_after_dequeue=min_queue_examples,
 			seed=273
 		)
@@ -150,8 +150,8 @@ def _generate_image_and_label_batch(image, data, label, min_queue_examples, batc
 		images, data, label_batch = tf.train.batch(
 			[image, data, label],
 			batch_size=batch_size,
-			num_threads=train_preprocess_threads,
-			capacity=min_queue_examples + 3 * batch_size #TODO: subject to change
+			num_threads=test_preprocess_threads,
+			capacity=min_queue_examples + 3 * batch_size
 		)
 
 	return images, data, tf.reshape(label_batch, [batch_size])
@@ -166,12 +166,8 @@ def distorted_inputs(train, data_list, batch_size, dimensions):
 			raise ValueError('Failed to find file: ' + f)
 
 	# Create a queue that produces the filenames to read
-	if train:
-		num_examples_per_epoch = NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN
-		filename_queue = tf.train.string_input_producer(filenames, shuffle=True, seed=273, num_epochs = 10)
-	else:
-		num_examples_per_epoch = NUM_EXAMPLES_PER_EPOCH_FOR_EVAL
-        filename_queue = tf.train.string_input_producer(filenames, shuffle=False)
+	num_examples_per_epoch = NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN
+	filename_queue = tf.train.string_input_producer(filenames, shuffle=True, seed=273, num_epochs = 10)
 
 	# Read examples from files in filename queue
 	read_input = read_binary(filename_queue, dimensions)
@@ -220,12 +216,10 @@ def inputs(train, data_list, batch_size, dimensions):
 			raise ValueError('Failed to find file: ' + f)
 
 	# Create a queue that produces the filenames to read
-	if train:
-		num_examples_per_epoch = NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN
-		filename_queue = tf.train.string_input_producer(filenames, shuffle=True, seed=273, num_epochs = 10)
-	else:
-		num_examples_per_epoch = NUM_EXAMPLES_PER_EPOCH_FOR_EVAL
-        filename_queue = tf.train.string_input_producer(filenames, shuffle=False)
+	num_examples_per_epoch = NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN
+	filename_queue = tf.train.string_input_producer(filenames, shuffle=True, seed=273)#, num_epochs = 10)
+	# num_examples_per_epoch = NUM_EXAMPLES_PER_EPOCH_FOR_EVAL
+	# filename_queue = tf.train.string_input_producer(filenames, shuffle=False)
 
 	# Read examples from files in filename queue
 	read_input = read_binary(filename_queue, dimensions)

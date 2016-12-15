@@ -1,4 +1,5 @@
 from operator import truediv
+from utils_fMRI_augment import *
 
 import numpy as np
 import csv
@@ -168,9 +169,9 @@ def saveBrainRegion2npy():
             convertedBrainRegionDict[id2regionDict[rawID]+1].append((coord[0],coord[1],coord[2]))
             count += 1
 
-    np.save('/data/index2BrainRegion',brainMat)
-    pickle.dump(brainRegionDict, open('rawBrainRegionID2Coords.p','wb'))
-    pickle.dump(convertedBrainRegionDict, open('brainRegionID2Coords.p','wb'))
+    np.save('/data/useful_npy/index2BrainRegion',brainMat)
+    pickle.dump(brainRegionDict, open('/data/useful_npy/rawBrainRegionID2Coords.p','wb'))
+    pickle.dump(convertedBrainRegionDict, open('/data/useful_npy/brainRegionID2Coords.p','wb'))
 
 def weights2Brain(weights):
     """
@@ -185,7 +186,7 @@ def weights2Brain(weights):
                             specified in 'weights'
     """
     brainMat = np.zeros(BRAIN_SZ)
-    index2region = np.load('/data/index2BrainRegion.npy')
+    index2region = np.load('/data/useful_npy/index2BrainRegion.npy')
     
     for x in range(BRAIN_SZ[0]):
         for y in range(BRAIN_SZ[1]):
@@ -260,6 +261,17 @@ def coolPics():
     # mat2visual(mat, [20,40,60], 'brain_regions.png', [0,1000])
 
     pass
+
+def blackOutVisualization(inputBrain):
+    weights = []
+    for region in range(BRAIN_REGION_SZ):
+        partialBrain = blackOutBrain(inputBrain, [region])
+
+        # push the partialBrain through the NN architecture
+        # weight = 
+        # weights.append(weight)
+
+    return weights2Brain(weights)
 
 import copy
 import itertools
