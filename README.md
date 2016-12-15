@@ -5,6 +5,11 @@
 ## Running Models
 All the models are run from `run.py`. All the hyper-parameters are initialized in the respective model functions. We have `argparse` functionality to run each of the individual models. There are three running modes `--train`, `--test`, and full pass which is defined by the lack of train/test flag. Furthermore, we can run four different models using the `--model` flag. The model names are: `cae`, `cnn`, `nn`, and `mmnn` for the Convolutional Autoencoder, Convolutional Neural Network, Neural Network (phenotype), and MultiModal Neural Network (CNN + NN), respectively.
 
+### Run Blackout
+```
+python run.py --blackout --model cnn --chkPointDir /data/fdsafd
+```
+
 ### Convolutional Autoencoder command line run
 
 Train the model on train dataset.
