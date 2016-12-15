@@ -96,8 +96,8 @@ def extract_parser():
 
 def create_conditions(args, FLAGS):
     binary_filelist = None
-    # batch_size = 1
-    batch_size = 32
+    batch_size = 1
+    # batch_size = 32
     max_steps = 1071
     run_all = False
 
@@ -109,6 +109,7 @@ def create_conditions(args, FLAGS):
         else:
             binary_filelist = FLAGS.reduced_train_binaries
         batch_size = 32
+        # batch_size = 1
         max_steps = args.numIters
     elif args.test: # We have 108 train patients
         if args.model == 'ae':

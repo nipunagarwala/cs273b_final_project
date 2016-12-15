@@ -120,7 +120,7 @@ def read_binary(filename_queue, dimensions):
 	result.label = tf.slice(record_bytes, [0], [label_bytes])
 
 	# Extract data
-	data_raw = tf.slice(record_bytes, [label_bytes], [data_bytes])
+	data_raw = tf.slice(record_bytes, [label_bytes], [label_bytes + data_bytes])
 	result.data = tf.reshape(data_raw, [data_bytes, 1])
 
 	# Extract image
@@ -136,7 +136,6 @@ def _generate_image_and_label_batch(image, data, label, min_queue_examples, batc
 	test_preprocess_threads = 1
 
 	if shuffle:
-		print "HERE5"
 		images, data, label_batch = tf.train.shuffle_batch(
 			[image, data, label],
 			batch_size=batch_size,
@@ -146,7 +145,6 @@ def _generate_image_and_label_batch(image, data, label, min_queue_examples, batc
 			seed=273
 		)
 	else:
-		print "HERE6"
 		images, data, label_batch = tf.train.batch(
 			[image, data, label],
 			batch_size=batch_size,
