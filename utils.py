@@ -85,7 +85,7 @@ def extract_parser():
     data_group.add_argument('--test', action="store_true", help='Testing the model')
     network_group.add_argument('--model', choices=['ae', 'cae', 'cnn', 'nn', 'mmnn'],
                         default='mmnn', help='Select model to run.')
-    parser.add_argument('--chkPointDir', dest='chkPt', default='/data/ckpt',
+    parser.add_argument('--chkPointDir', dest='chkPt', default='/data/axel_ckpt/cnn_swap_partial_NOT_WORKING',
                         help='Directory to save the checkpoints. Default is /data/ckpt')
     parser.add_argument('--numIters', dest='numIters', default=200, type=int,
                         help='Number of Training Iterations. Default is 200')

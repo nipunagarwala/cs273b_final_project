@@ -643,8 +643,6 @@ def createBlackRegions(patientID):
         np.save('/data/blackoutBrains/%d_%s_region_%d'%(patientID,patLabel,i), blackBrain)
 
 if __name__ == '__main__':
-    for i in xrange(10,21):
-        print np.memmap(filename='/data/swap_partial_binaries_reduced/compressed_%d_autism_partially_patched_4.bin'%i, dtype='float32',mode='r',shape=1)
     # BRAINID2COORDS = pickle.load(open('/data/useful_npy/brainRegionID2Coords.p','rb'))
 
     # prepreProcess()
@@ -709,3 +707,20 @@ if __name__ == '__main__':
     #         testFilenames.append('/data/binaries_reduced2/'+f)
     
     # json.dump(testFilenames,open('/data/test_20_80_split.json','w'))
+
+    import json
+    import re
+    autList,cntlList = getGroupLabels()
+    a = json.load(open('/data/test2.json','r'))
+    count = 0
+    for filename in a:
+        label = int(np.memmap(filename=filename, dtype='float32',
+                              mode='r', offset=0, shape=1))
+        print filename
+        patientID = int(re.search('[0-9]+',re.search('[0-9]+.bin',filename).group(0)).group(0))
+        print patientID
+        print label
+        if not ((label==0 and (patientID in cntlList)) or (label==1 and (patientID in autList))):
+            count += 1
+
+    print float(count)/len(a)
