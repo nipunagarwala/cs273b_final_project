@@ -516,17 +516,32 @@ def returnFeatures(patientID, phenotype_file=PHENOTYPE_FILE):
 
     return patient_label,phenotype_data
 
-def convertBrain2npy(patientID, brain_data, bin_path):
+def convertBrain2bin(runList):
     from create_brain_binaries import _normalize_brain,_create_feature_binary
 
+    patientID = runList[0]
+    brain_data_file = runList[1]
+    bin_path = runList[2]
     patient_label,phenotype_data = returnFeatures(patientID)
 
     # Load brain images from .npy files
+    brain_data = np.load(brain_data_file)
     brain_data = brain_data.astype(np.float32)
     normailized_brain = _normalize_brain(brain_data)
 
     # Create binaries from all data
     _create_feature_binary(phenotype_data, normailized_brain, patient_label, bin_path)
+
+def convertBrain2binWrapper(oriDir, outputDir, firstRegex):
+    import re
+    runList = []
+    for f in os.listdir(oriDir):
+        patientID = int(re.search('[0-9]+',re.search(firstRegex,f).group(0)).group(0))
+        bin_path = os.path.join(outputDir,f.split('.')[0]+'.bin')
+        runList.append((patientID,os.path.join(oriDir,f),bin_path))
+    
+    p = Pool(8)
+    p.map(convertBrain2bin, runList)
 
 def batchROIData(patientID, batchSz=10):
     import re
@@ -637,10 +652,12 @@ def createBlackRegions(patientID):
      # load the base brain
     filepath = os.path.join(BRAIN_DIR,'original_%d.npy'%patientID)
     brain = np.load(filepath)
+    np.save('/data/blackoutBrains/%d_%s_original_region'%(patientID,patLabel), blackBrain)
 
     for i in xrange(1,BRAIN_REGION_SZ+1):
         blackBrain = blackOutBrain(brain, [i])
-        np.save('/data/blackoutBrains/%d_%s_region_%d'%(patientID,patLabel,i), blackBrain)
+        np.save('/data/blackoutBrains/%d_%s_%d_region'%(patientID,patLabel,i), blackBrain)
+
 
 if __name__ == '__main__':
     # BRAINID2COORDS = pickle.load(open('/data/useful_npy/brainRegionID2Coords.p','rb'))
@@ -708,19 +725,8 @@ if __name__ == '__main__':
     
     # json.dump(testFilenames,open('/data/test_20_80_split.json','w'))
 
-    import json
-    import re
-    autList,cntlList = getGroupLabels()
-    a = json.load(open('/data/test2.json','r'))
-    count = 0
-    for filename in a:
-        label = int(np.memmap(filename=filename, dtype='float32',
-                              mode='r', offset=0, shape=1))
-        print filename
-        patientID = int(re.search('[0-9]+',re.search('[0-9]+.bin',filename).group(0)).group(0))
-        print patientID
-        print label
-        if not ((label==0 and (patientID in cntlList)) or (label==1 and (patientID in autList))):
-            count += 1
 
-    print float(count)/len(a)
+    
+    convertBrain2binWrapper('/data/blackoutBrains', '/data/blackoutVisual/', '[0-9]+_autistic|[0-9]+_control')
+
+    # convertBrain2binWrapper('/data/augmented_swap_partial_steal_13', '/data/swap_partial_13_binaries', '[0-9]+_autism|[0-9]+_control')

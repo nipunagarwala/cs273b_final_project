@@ -262,16 +262,9 @@ def coolPics():
 
     pass
 
-def blackOutVisualization(inputBrain):
-    weights = []
-    for region in range(BRAIN_REGION_SZ):
-        partialBrain = blackOutBrain(inputBrain, [region])
-
-        # push the partialBrain through the NN architecture
-        # weight = 
-        # weights.append(weight)
-
-    return weights2Brain(weights)
+def blackOutVisualization(ref_prob, probs):
+    weights = [p-ref_prob for p in probs]
+    np.save('blackout', weights2Brain(weights))
 
 import copy
 import itertools

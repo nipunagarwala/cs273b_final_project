@@ -43,6 +43,12 @@ tf.app.flags.DEFINE_string('reduced_test_binaries', '/data/reduced_test2.json',#
 tf.app.flags.DEFINE_string('reduced_all_binaries', '/data/reduced_all2.json',
                            """File containing list of all the binary filenames """)
 
+# visualization flags
+tf.app.flags.DEFINE_string('blackout_binaries', '/data/reduced_all2.json',
+                           """File containing list of the blackout binary filenames """)
+tf.app.flags.DEFINE_string('saliency_binaries', '/data/reduced_all2.json',
+                           """File containing list of the saliency binary filenames """)
+
 # Run Model flags
 tf.app.flags.DEFINE_boolean('train', True, """Training the model """)
 tf.app.flags.DEFINE_boolean('test', True, """Testing the model """)
@@ -257,7 +263,7 @@ def createMultiModalNN(image, data, output, p_keep_conv, batch_size, phase_train
 
 
 
-def run_model(train, model, binary_filelist, run_all, batch_size, max_steps, overrideChkpt):
+def run_model(train, model, binary_filelist, run_all, batch_size, max_steps, overrideChkpt, visualization):
     if not train:
         const_dict = create_constants_dictionary()
         now = datetime.datetime.now()
@@ -299,6 +305,8 @@ def run_model(train, model, binary_filelist, run_all, batch_size, max_steps, ove
     ckpt = tf.train.get_checkpoint_state(FLAGS.checkpoint_dir)
     if train:
         ckpt_list = [ckpt.model_checkpoint_path if ckpt else None]
+    elif visualization!=None:
+        ckpt_list = [ckpt.model_checkpoint_path if ckpt else None]
     else:
         ckpt_list = ckpt.all_model_checkpoint_paths
     print ckpt_list
@@ -333,6 +341,7 @@ def run_model(train, model, binary_filelist, run_all, batch_size, max_steps, ove
 
                 compressed_filelist = []
                 predictions = []
+                pred_prob = []
                 targets = []
                 avg_acc = 0
 
@@ -402,6 +411,7 @@ def run_model(train, model, binary_filelist, run_all, batch_size, max_steps, ove
                             p = np.argmax(pred, axis=1).flatten().tolist()
                             print "Predictions are: " + str(p)
                             print "Target are:      " + str(targ.flatten().tolist())
+                            pred_prob.extend(pred[:,0])
                             predictions.extend(p)
                             targets.extend(targ.flatten().tolist())
                             _, acc, _, _, _ = compute_statistics(targ.flatten().tolist(), p)
@@ -431,18 +441,24 @@ def run_model(train, model, binary_filelist, run_all, batch_size, max_steps, ove
                     #     saver.save(sess, checkpoint_path, global_step=i)
 
                 if not train and model != 'cae' and model != 'ae':
-                    # predictions = predictions[:107]
-                    # targets = targets[:107]
-                    print "Average Accuracy: " + str(avg_acc / max_steps)
-                    targets = [int(t) for t in targets]
-                    print predictions
-                    print targets
-                    print sum([abs(a-b) for a, b in zip(predictions, targets)])
-                    print len(targets), len(predictions)
-                    conf_matrix, accuracy, recall, precision, f_score = compute_statistics(targets, predictions)
-                    plot_confusion_matrix(conf_matrix)
+                    if visualization=='blackout':
+                        blackOutVisualization(pred_prob[0], pred_prob[1:118])
+                    elif visualization=='saliency':
+                        # saliency()
+                        pass
+                    else:
+                        # predictions = predictions[:107]
+                        # targets = targets[:107]
+                        print "Average Accuracy: " + str(avg_acc / max_steps)
+                        targets = [int(t) for t in targets]
+                        print predictions
+                        print targets
+                        print sum([abs(a-b) for a, b in zip(predictions, targets)])
+                        print len(targets), len(predictions)
+                        conf_matrix, accuracy, recall, precision, f_score = compute_statistics(targets, predictions)
+                        plot_confusion_matrix(conf_matrix)
 
-                    writer.writerow([ckpt_file.split('/')[-1].split('-')[-1], accuracy, recall, precision, f_score])
+                        writer.writerow([ckpt_file.split('/')[-1].split('-')[-1], accuracy, recall, precision, f_score])
 
 
                 # CAE/AE Output
@@ -459,14 +475,15 @@ def main(_):
     args = extract_parser()
 
     # Create conditional variables
-    binary_filelist, batch_size, max_steps, run_all = create_conditions(args, FLAGS)
+    binary_filelist, batch_size, max_steps, run_all, visualization = create_conditions(args, FLAGS)
 
     # Set the checkpoint directory.
     if not os.path.exists(args.chkPt):
         print "Directory '%s' does not exist." % args.chkPt
     FLAGS.checkpoint_dir = args.chkPt
 
-    run_model(args.train, args.model, binary_filelist, run_all, batch_size, max_steps, args.overrideChkpt)
+    run_model(args.train, args.model, binary_filelist, run_all, batch_size, 
+              max_steps, args.overrideChkpt, visualization)
 
 
 if __name__ == "__main__":
