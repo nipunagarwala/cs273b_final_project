@@ -271,12 +271,12 @@ def run_model(train, model, binary_filelist, run_all, batch_size, max_steps, ove
     else:
         input_dimensions = [31, 37, 31]
 
-    keys, image, data, output, p_keep_conv = createVariables(train, binary_filelist, batch_size, input_dimensions)
+    # keys, image, data, output, p_keep_conv = createVariables(train, binary_filelist, batch_size, input_dimensions)
     phase_train = tf.placeholder(tf.bool, name='phase_train')
-    # image = tf.placeholder(dtype=tf.float32, shape=(None, 31, 37, 31, 1))
-    # data = tf.placeholder(dtype=tf.float32, shape=(None, 29))
-    # output = tf.placeholder(dtype=tf.float32, shape=(None, 1))
-    # p_keep_conv = tf.placeholder(dtype=tf.float32)
+    image = tf.placeholder(dtype=tf.float32, shape=(None, 31, 37, 31, 1))
+    data = tf.placeholder(dtype=tf.float32, shape=(None, 29))
+    output = tf.placeholder(dtype=tf.float32, shape=(None, 1))
+    p_keep_conv = tf.placeholder(dtype=tf.float32)
 
     if model == 'ae':
         layer_outputs, weights, encode, decode, \
@@ -325,10 +325,10 @@ def run_model(train, model, binary_filelist, run_all, batch_size, max_steps, ove
                 coord = tf.train.Coordinator()
                 tf.train.start_queue_runners(coord=coord, sess=sess)
 
-                # Visualization of Distorted inputs
-                distorted_image = np.asarray(sess.run(image))
-                print np.shape(distorted_image)
-                mat2visual(distorted_image[0, :, :, :, 0], [10, 15, 19], 'distortedImage.png', 'auto')
+                # # Visualization of Distorted inputs
+                # distorted_image = np.asarray(sess.run(image))
+                # print np.shape(distorted_image)
+                # mat2visual(distorted_image[0, :, :, :, 0], [10, 15, 19], 'distortedImage.png', 'auto')
 
                 i_stopped = setup_checkpoint(train, sess, saver, ckpt, str(ckpt_file), overrideChkpt)
 
@@ -398,18 +398,18 @@ def run_model(train, model, binary_filelist, run_all, batch_size, max_steps, ove
                             print "Target are:      " + str(targets)
                             compute_statistics(targets, predictions)
                         else:
-                            pred, loss, targ = sess.run([layer_outputs['pred'], cost, output], feed_dict=feed_dict)
-                            print "Prediction Probabilities are: " + str(pred)
-                            p = np.argmax(pred, axis=1).flatten().tolist()
-                            print "Predictions are: " + str(p)
-                            print "Target are:      " + str(targ.flatten().tolist())
-                            predictions.extend(p)
-                            targets.extend(targ.flatten().astype(int).tolist())
-                            _, acc, _, _, _ = compute_statistics(targ.flatten().tolist(), p)
-                            avg_acc += acc
+                            # pred, loss, targ = sess.run([layer_outputs['pred'], cost, output], feed_dict=feed_dict)
+                            # print "Prediction Probabilities are: " + str(pred)
+                            # p = np.argmax(pred, axis=1).flatten().tolist()
+                            # print "Predictions are: " + str(p)
+                            # print "Target are:      " + str(targ.flatten().tolist())
+                            # predictions.extend(p)
+                            # targets.extend(targ.flatten().astype(int).tolist())
+                            # _, acc, _, _, _ = compute_statistics(targ.flatten().tolist(), p)
+                            # avg_acc += acc
 
-                            # # Saliency Code:
-                            # saliency(image, layer_outputs['output_values'], sess, phase_train)
+                            # Saliency Code:
+                            saliency(image, layer_outputs['output_values'], sess, phase_train)
 
                     print("The current loss is: " + str(loss))
 

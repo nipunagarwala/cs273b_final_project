@@ -96,8 +96,8 @@ def extract_parser():
 
 def create_conditions(args, FLAGS):
     binary_filelist = None
-    batch_size = 1
-    # batch_size = 32
+    # batch_size = 1
+    batch_size = 32
     max_steps = 1071
     run_all = False
 

@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 import math
 import argparse
 import create_brain_binaries
-#import tensorflow as tf
+import tensorflow as tf
 from sklearn.metrics import confusion_matrix
 
 from mpl_toolkits.axes_grid1 import make_axes_locatable
@@ -187,7 +187,7 @@ def weights2Brain(weights):
     """
     brainMat = np.zeros(BRAIN_SZ)
     index2region = np.load('/data/useful_npy/index2BrainRegion.npy')
-    
+
     for x in range(BRAIN_SZ[0]):
         for y in range(BRAIN_SZ[1]):
             for z in range(BRAIN_SZ[2]):
@@ -224,9 +224,11 @@ def mat2visual(mat, zLocs, filename, valRange='auto'):
         plt.subplot(1,len(zLocs),i+1)
         plt.title('z='+str(zLocs[i]))
         if type(valRange) is str and valRange=='auto':
-            plt.imshow(mat[:,:,zLocs[i]], cmap = "gray", interpolation='none')
+            # plt.imshow(mat[:,:,zLocs[i]], cmap = "gray", interpolation='none')
+            plt.imshow(mat[:,:,zLocs[i]], interpolation='none')
         else:
-            plt.imshow(mat[:,:,zLocs[i]], vmin=min(valRange), vmax=max(valRange), cmap = "gray", interpolation='none')
+            # plt.imshow(mat[:,:,zLocs[i]], vmin=min(valRange), vmax=max(valRange), cmap = "gray", interpolation='none')
+            plt.imshow(mat[:,:,zLocs[i]], vmin=min(valRange), vmax=max(valRange), interpolation='none')
 
     ax = plt.gca()
     divider = make_axes_locatable(ax)
@@ -268,7 +270,7 @@ def blackOutVisualization(inputBrain):
         partialBrain = blackOutBrain(inputBrain, [region])
 
         # push the partialBrain through the NN architecture
-        # weight = 
+        # weight =
         # weights.append(weight)
 
     return weights2Brain(weights)
@@ -281,7 +283,7 @@ CLASS_NUM = 2
 
 # adapted from https://github.com/openai/cleverhans/tree/5c6ece85ffe82441a5512b4ff4120fd904aedab4
 
-def jacobian(sess, x, grads, label, X):
+def jacobian(sess, x, grads, label, X, phase_train):
     """
     TensorFlow implementation of the foward derivative / Jacobian
     :param x: the input placeholder
@@ -291,14 +293,14 @@ def jacobian(sess, x, grads, label, X):
     :return: matrix of forward derivatives flattened into vectors
     """
     # Prepare feeding dictionary for all gradient computations
-    feed_dict = {x: X}
+    feed_dict = {x: X, phase_train: False}
 
     # Initialize a numpy array to hold the Jacobian component values
-    jacobian_val = np.zeros((CLASS_NUM, X.shape[0], X.shape[1], X.shape[2]), dtype=np.float32)
+    jacobian_val = np.zeros((CLASS_NUM, X.shape[0], X.shape[1], X.shape[2], X.shape[3], X.shape[4]), dtype=np.float32)
 
     # Compute the gradients for all classes
     for class_ind, grad in enumerate(grads):
-        jacobian_val[class_ind] = sess.run(grad, feed_dict)
+        jacobian_val[class_ind, :, :, :, :] = sess.run(grad, feed_dict)
 
     return jacobian_val
 

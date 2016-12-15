@@ -12,7 +12,7 @@ CROP = 4
 # Phenotype data is vector of size (29,)
 
 
-def gaussian_noise(image, threshold=1, mean=0.0, stddev=0.01, seed=None):
+def gaussian_noise(image, threshold=1, mean=0.0, stddev=0.05, seed=None):
 
 	delta = tf.truncated_normal(image.get_shape(), mean=mean, stddev=stddev, dtype=tf.float32, seed=seed, name=None)
 	with tf.name_scope(None, 'gaussian_noise', [image, delta]) as name:
@@ -120,24 +120,25 @@ def read_binary(filename_queue, dimensions):
 	result.label = tf.slice(record_bytes, [0], [label_bytes])
 
 	# Extract data
-	data_raw = tf.slice(record_bytes, [label_bytes], [label_bytes + data_bytes])
+	data_raw = tf.slice(record_bytes, [label_bytes], [data_bytes])
 	result.data = tf.reshape(data_raw, [data_bytes, 1])
 
 	# Extract image
-	image_raw = tf.slice(record_bytes, [label_bytes + data_bytes], [result.height * result.width * result.depth])
+	# image_raw = tf.slice(record_bytes, [label_bytes + data_bytes], [result.height * result.width * result.depth])
+	image_raw = tf.slice(record_bytes, [data_bytes], [result.height * result.width * result.depth])
 	# result.image = tf.reshape(image_raw, [result.height, result.width, result.depth, 1])
 	result.image = tf.reshape(image_raw, [result.height, result.width, result.depth])
 
 	return result
 
-def _generate_image_and_label_batch(image, data, label, min_queue_examples, batch_size, shuffle):
+def _generate_image_and_label_batch(image, data, label, key, min_queue_examples, batch_size, shuffle):
 	# Create queue that shuffles examples and reads 'batch_size' images/labels from queue
 	train_preprocess_threads = 16
 	test_preprocess_threads = 1
 
 	if shuffle:
-		images, data, label_batch = tf.train.shuffle_batch(
-			[image, data, label],
+		keys, images, data, label_batch = tf.train.shuffle_batch(
+			[key, image, data, label],
 			batch_size=batch_size,
 			num_threads=train_preprocess_threads,
 			capacity=min_queue_examples + 3 * batch_size,
@@ -145,14 +146,14 @@ def _generate_image_and_label_batch(image, data, label, min_queue_examples, batc
 			seed=273
 		)
 	else:
-		images, data, label_batch = tf.train.batch(
-			[image, data, label],
+		keys, images, data, label_batch = tf.train.batch(
+			[key, image, data, label],
 			batch_size=batch_size,
 			num_threads=test_preprocess_threads,
 			capacity=min_queue_examples + 3 * batch_size
 		)
 
-	return images, data, tf.reshape(label_batch, [batch_size])
+	return keys, images, data, tf.reshape(label_batch, [batch_size])
 
 
 def distorted_inputs(train, data_list, batch_size, dimensions):
@@ -165,7 +166,7 @@ def distorted_inputs(train, data_list, batch_size, dimensions):
 
 	# Create a queue that produces the filenames to read
 	num_examples_per_epoch = NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN
-	filename_queue = tf.train.string_input_producer(filenames, shuffle=True, seed=273, num_epochs = 10)
+	filename_queue = tf.train.string_input_producer(filenames, shuffle=True, seed=273)
 
 	# Read examples from files in filename queue
 	read_input = read_binary(filename_queue, dimensions)
@@ -173,27 +174,29 @@ def distorted_inputs(train, data_list, batch_size, dimensions):
 	# # Crop input
 	# cropped_dimensions = [(d - CROP) for d in dimensions]
 	# distorted_input = tf.random_crop(read_input.image, cropped_dimensions)
-
+	#
 	# # Randomly flip image
-	# distorted_input = tf.image.random_flip_left_right(read_input.image)
-	# # distorted_input = tf.image.random_flip_left_right(distorted_input)
+	# # distorted_input = tf.image.random_flip_left_right(read_input.image)
+	# distorted_input = tf.image.random_flip_left_right(distorted_input)
 	# distorted_input = tf.image.random_flip_up_down(distorted_input)
 	# distorted_input = random_flip_fwd_back(distorted_input)
 
 	# # Distort Brightness and Contrast - make some condition to change ordering of distortions
 	# distorted_input = tf.image.random_brightness(distorted_input, max_delta=0.25)
 	# distorted_input = tf.image.random_contrast(distorted_input, lower=0.2, upper=0.8)
-	#
-	# # Add Gaussian noise
+
+	# Add Gaussian noise
 	# distorted_input = gaussian_noise(distorted_input)
 
-	# # Normalize - zero mean, unit variance
+	# Normalize - zero mean, unit variance
  	# norm_input = tf.image.per_image_whitening(read_input.image)
- 	# norm_input = tf.image.per_image_whitening(distorted_input)
+  	# norm_input = tf.image.per_image_whitening(distorted_input)
 
 	correct_shape_input = tf.reshape(read_input.image, dimensions + [1])
 	# correct_shape_input = tf.reshape(norm_input, dimensions + [1])
 	# correct_shape_input = tf.reshape(norm_input, cropped_dimensions + [1])
+	# correct_shape_input = tf.reshape(distorted_input, cropped_dimensions + [1])
+
 
 	# Ensure that random shuffling has good mixing properties
 	min_fraction_of_examples_in_queue = 0.4
@@ -202,7 +205,7 @@ def distorted_inputs(train, data_list, batch_size, dimensions):
 
 	# Generate a batch of images and label by building up a queue of examples
 	return _generate_image_and_label_batch(correct_shape_input, read_input.data,
-					read_input.label, min_queue_examples, batch_size, train)
+					read_input.label, read_input.key, min_queue_examples, batch_size, train)
 
 
 def inputs(train, data_list, batch_size, dimensions):
@@ -214,10 +217,8 @@ def inputs(train, data_list, batch_size, dimensions):
 			raise ValueError('Failed to find file: ' + f)
 
 	# Create a queue that produces the filenames to read
-	num_examples_per_epoch = NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN
-	filename_queue = tf.train.string_input_producer(filenames, shuffle=True, seed=273)#, num_epochs = 10)
-	# num_examples_per_epoch = NUM_EXAMPLES_PER_EPOCH_FOR_EVAL
-	# filename_queue = tf.train.string_input_producer(filenames, shuffle=False)
+	num_examples_per_epoch = NUM_EXAMPLES_PER_EPOCH_FOR_EVAL
+	filename_queue = tf.train.string_input_producer(filenames, shuffle=False)
 
 	# Read examples from files in filename queue
 	read_input = read_binary(filename_queue, dimensions)
@@ -245,6 +246,6 @@ def inputs(train, data_list, batch_size, dimensions):
 
 	# Generate a batch of images and label by building up a queue of examples
 	return _generate_image_and_label_batch(correct_shape_input, read_input.data,
-					read_input.label, min_queue_examples, batch_size, train)
+					read_input.label, read_input.key, min_queue_examples, batch_size, train)
 	# return _generate_image_and_label_batch(read_input.image, read_input.data,
 	# 				read_input.label, min_queue_examples, batch_size, train)
