@@ -83,6 +83,7 @@ def extract_parser():
     checkoint_file_group = parser.add_mutually_exclusive_group()
     data_group.add_argument('--train', action="store_true", help='Training the model')
     data_group.add_argument('--test', action="store_true", help='Testing the model')
+    data_group.add_argument('--blackout', action="store_true", help='Conduct Blackout visualization')
     network_group.add_argument('--model', choices=['ae', 'cae', 'cnn', 'nn', 'mmnn'],
                         default='mmnn', help='Select model to run.')
     parser.add_argument('--chkPointDir', dest='chkPt', default='/data/ckpt',
@@ -100,6 +101,7 @@ def create_conditions(args, FLAGS):
     batch_size = 32
     max_steps = 1071
     run_all = False
+    visualization = None
 
     if args.train:  # We have 963 train patients
         if args.model == 'ae':
@@ -120,6 +122,11 @@ def create_conditions(args, FLAGS):
             binary_filelist = FLAGS.reduced_test_binaries
         # max_steps = 107
         max_steps = 4 #4#30#150
+    elif args.blackout:
+        binary_filelist = FLAGS.reduced_test_binaries
+        visualization = 'blackout'
+        batch_size = 32
+        max_steps = 33 #117*9/batchSz
     else:
         if args.model == 'ae':
             binary_filelist = FLAGS.ae_all_binaries
@@ -129,7 +136,7 @@ def create_conditions(args, FLAGS):
             binary_filelist = FLAGS.reduced_all_binaries
         run_all = True
 
-    return binary_filelist, batch_size, max_steps, run_all
+    return binary_filelist, batch_size, max_steps, run_all, visualization
 
 def setup_checkpoint(train, sess, saver, ckpt, ckpt_file, overrideChkpt):
     if train:
