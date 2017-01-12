@@ -5,10 +5,10 @@
   * `**BRAINID2COORDS` - Brain ID to corresponding coordinates. Generated with prepreProcess()
 
 ## Data Generation
-  * `loadfALFF`(patientID) - Converts raw fALFF data to a 3D representation in numpy.
-    * `loadfALFF_All`() - Wraps around loadfALFF(), dumps pooled data under ./pooledData directory
-  * `sizeReduction`(data, targetShape, opt, poolBox=(2,2,2), filename=None) - Reduce size of 3D brain data
-  * `augmentROI2Brain`(patientID) - Generates the ROI brain data and stores it
+  * `loadfALFF(patientID)` - Converts raw fALFF data to a 3D representation in numpy.
+    * `loadfALFF_All()` - Wraps around loadfALFF(), dumps pooled data under ./pooledData directory
+  * `sizeReduction(data, targetShape, opt, poolBox=(2,2,2), filename=None)` - Reduce size of 3D brain data
+  * `augmentROI2Brain(patientID)` - Generates the ROI brain data and stores it
 
 ## Data Augmentation
   * `augmentGeoTrans(patientID)` - Applies geometric transformations (reflection in 3 dimensions), and saves to a file
