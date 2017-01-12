@@ -1,8 +1,8 @@
 # README for utils_fMRI_augment.py
 
 ## Global Variables
-  * `**ALL_BRAINS` - list containing 3D numpy brain matrix for every patient. Generated with prepreProcess()
-  * `**BRAINID2COORDS` - Brain ID to corresponding coordinates. Generated with prepreProcess()
+  * `ALL_BRAINS` - list containing 3D numpy brain matrix for every patient. Generated with prepreProcess()
+  * `BRAINID2COORDS` - Brain ID to corresponding coordinates. Generated with prepreProcess()
 
 ## Data Generation
   * `loadfALFF(patientID)` - Converts raw fALFF data to a 3D representation in numpy.
