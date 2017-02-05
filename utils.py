@@ -84,7 +84,6 @@ def extract_parser():
     data_group.add_argument('--train', action="store_true", help='Training the model')
     data_group.add_argument('--test', action="store_true", help='Testing the model')
     data_group.add_argument('--blackout', action="store_true", help='Conduct Blackout visualization')
-    data_group.add_argument('--saliency', action="store_true", help='Conduct Saliency visualization')
     network_group.add_argument('--model', choices=['ae', 'cae', 'cnn', 'nn', 'mmnn'],
                         default='mmnn', help='Select model to run.')
     parser.add_argument('--chkPointDir', dest='chkPt', default='/data/axel_ckpt/cnn_swap_partial_NOT_WORKING',
@@ -98,8 +97,8 @@ def extract_parser():
 
 def create_conditions(args, FLAGS):
     binary_filelist = None
-    batch_size = 1
-    # batch_size = 32
+    # batch_size = 1
+    batch_size = 32
     max_steps = 1071
     run_all = False
     visualization = None
@@ -124,14 +123,10 @@ def create_conditions(args, FLAGS):
         # max_steps = 107
         max_steps = 4 #4#30#150
     elif args.blackout:
-        binary_filelist = FLAGS.blackout_binaries
+        binary_filelist = FLAGS.reduced_test_binaries
         visualization = 'blackout'
         batch_size = 32
-        max_steps = 4
-    elif args.saliency:
-        binary_filelist = FLAGS.saliency_binaries
-        visualization = 'saliency'
-        batch_size = 32
+        max_steps = 33 #117*9/batchSz
     else:
         if args.model == 'ae':
             binary_filelist = FLAGS.ae_all_binaries

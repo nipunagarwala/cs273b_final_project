@@ -7,8 +7,8 @@ import argparse
 
 BRAIN_DIR = os.path.abspath('/data/originalfALFFData')
 BRAIN_DIR_AUG_ALL = os.path.abspath('/data/augmented_swap_all')
-# BRAIN_DIR_AUG_PARTIAL = os.path.abspath('/data/augmented_swap_partial')
-BRAIN_DIR_AUG_PARTIAL = os.path.abspath('/data/augmented_swap_partial_steal_25_split_80_20')
+BRAIN_DIR_AUG_PARTIAL = os.path.abspath('/data/augmented_swap_partial')
+# BRAIN_DIR_AUG_PARTIAL = os.path.abspath('/data/augmented_swap_partial_steal_25_split_80_20')
 
 # PHENOTYPE_FILE = os.path.abspath('/data/processed_imputed_phenotype_data.csv')
 PHENOTYPE_FILE = os.path.abspath('/data/normalized_imputed_phenotype_data.csv')
@@ -18,10 +18,10 @@ ALL_FILES = os.path.abspath('/data/all2.json')
 TRAIN_FILE = os.path.abspath('/data/train2.json')
 TEST_FILE = os.path.abspath('/data/test2.json')
 
-# OUTPUT_DIR_PARTIAL_RANDOM = os.path.abspath('/data/swap_partial_binaries')
-OUTPUT_DIR_PARTIAL_RANDOM = os.path.abspath('/data/augmented_swap_partial_steal_25_split_80_20_binaries')
-# TRAIN_FILE_PARTIAL_RANDOM = os.path.abspath('/data/swap_partial_train.json')
-TRAIN_FILE_PARTIAL_RANDOM = os.path.abspath('/data/train_20_80_split.json')
+OUTPUT_DIR_PARTIAL_RANDOM = os.path.abspath('/data/swap_partial_binaries2')
+# OUTPUT_DIR_PARTIAL_RANDOM = os.path.abspath('/data/augmented_swap_partial_steal_25_split_80_20_binaries')
+TRAIN_FILE_PARTIAL_RANDOM = os.path.abspath('/data/swap_partial_train2.json')
+# TRAIN_FILE_PARTIAL_RANDOM = os.path.abspath('/data/train_20_80_split.json')
 
 OUTPUT_DIR_ALL_RANDOM = os.path.abspath('/data/swap_all_binaries')
 TRAIN_FILE_ALL_RANDOM = os.path.abspath('/data/swap_all_train.json')
@@ -60,7 +60,9 @@ def convert_brain_npy(brain_dir=BRAIN_DIR, phenotype_file=PHENOTYPE_FILE, output
     with open(phenotype_file, 'r') as csvfile:
         patient_reader = csv.reader(csvfile)
         for patient in patient_reader:
+            print patient
             patient_id = patient[0]
+            print patient_id
             if patient_id == "":
                 continue
 
@@ -96,6 +98,7 @@ def convert_random_brain_npy(brain_dir, output_dir, use_pheno, phenotype_file=PH
     aug_file_list = os.listdir(brain_dir)
 
     if use_pheno:
+        print "Using phenotype data."
         with open(phenotype_file, 'r') as csvfile:
             patient_reader = csv.reader(csvfile)
             count = 0
@@ -109,9 +112,13 @@ def convert_random_brain_npy(brain_dir, output_dir, use_pheno, phenotype_file=PH
                 patient_label = np.float32(patient[3])
                 phenotype_data = patient[5:16] + patient[19:]
                 phenotype_data = np.asarray(phenotype_data, dtype=np.float32)
-
                 for brain_npy in patched_brains:
+                    print "Reading NPY file: " +  brain_npy
                     brain_file_components = brain_npy.split(".")
+                    # label = 1 if brain_npy.split("_")[1] == "autism" else 0
+                    # count += int(int(patient_label) != label)
+                    # print patient_label
+                    # print brain_file_components
                     brain_bin = brain_file_components[0] + ".bin"
 
                     # Create necessary paths
@@ -126,8 +133,10 @@ def convert_random_brain_npy(brain_dir, output_dir, use_pheno, phenotype_file=PH
                     # Create binaries from all data
                     _create_feature_binary(phenotype_data, normailized_brain, patient_label, bin_path)
                     path_list.append(bin_path)
+            print count
 
     else:
+        print "NOT using phenotype data."
         # Iterate though all augmented training files
         for brain_npy in aug_file_list:
             patient_label = 1.0 if "autism" in brain_npy else 0.0

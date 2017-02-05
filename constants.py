@@ -69,7 +69,7 @@ CAE_BETA_2 = None
 
 
 # Multi-Modal NN (MMNN)
-MMNN_LEARNING_RATE = 0.001
+MMNN_LEARNING_RATE = 0.0001
 
 # apply batch norm or not
 MMNN_BATCH_NORM = True
