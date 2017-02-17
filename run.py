@@ -44,12 +44,6 @@ tf.app.flags.DEFINE_string('reduced_test_binaries', '/data/blackoutVisual_reduce
 tf.app.flags.DEFINE_string('reduced_all_binaries', '/data/reduced_all2.json',
                            """File containing list of all the binary filenames """)
 
-# visualization flags
-tf.app.flags.DEFINE_string('blackout_binaries', '/data/reduced_all2.json',
-                           """File containing list of the blackout binary filenames """)
-tf.app.flags.DEFINE_string('saliency_binaries', '/data/reduced_all2.json',
-                           """File containing list of the saliency binary filenames """)
-
 # Run Model flags
 tf.app.flags.DEFINE_boolean('train', True, """Training the model """)
 tf.app.flags.DEFINE_boolean('test', True, """Testing the model """)
@@ -448,8 +442,8 @@ def run_model(train, model, binary_filelist, run_all, batch_size, max_steps, ove
 
                 if not train and model != 'cae' and model != 'ae':
                     if visualization=='blackout':
-
                         blackOutVisualization(pred_prob, filenames)
+
                     # predictions = predictions[:107]
                     # targets = targets[:107]
                     print "Average Accuracy: " + str(avg_acc / max_steps)

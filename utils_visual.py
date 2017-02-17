@@ -264,17 +264,6 @@ def coolPics():
 
     pass
 
-def blackOutVisualization(inputBrain):
-    weights = []
-    for region in range(BRAIN_REGION_SZ):
-        partialBrain = blackOutBrain(inputBrain, [region])
-
-        # push the partialBrain through the NN architecture
-        # weight =
-        # weights.append(weight)
-
-    return weights2Brain(weights)
-
 import copy
 import itertools
 import multiprocessing as mp
