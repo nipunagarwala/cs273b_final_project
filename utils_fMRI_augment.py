@@ -617,11 +617,6 @@ def returnFeatures(patientID, phenotype_file=PHENOTYPE_FILE):
 
     return patient_label,phenotype_data
 
-def convertBrain2bin(patientID, brain_data, bin_path):
-    """
-    Combines 3D brain info in brain_data with phenotype data, and stores it under bin_path
-    """
-
 def convertBrain2bin(runList):
     from create_brain_binaries import _normalize_brain,_create_feature_binary
 
@@ -807,7 +802,45 @@ def createBlackRegions(patientID):
         blackBrain = blackOutBrain(brain, [i])
         np.save('/data/blackoutBrains/%d_%s_%d_region'%(patientID,patLabel,i), blackBrain)
 
+def changeResponseVariable(responseCol, originalDataName, outputDataName, regexStr='[0-9]+'):
+    """
+    responseCol - column number of the response variable as listed in /data/processed_full_phenotype_data.csv
+        - 10: age
+        - 11: male
+        - 12: female
+    """
+
+    import re
+    with open('/data/processed_full_phenotype_data.csv') as csvfile:
+        csvR = csv.reader(csvfile)
+        featureList = list(csvR)
+        feature = np.array(featureList)
+        feature = feature[1:,responseCol]
+
+    unzipDirectory(originalDataName)
+
+    # replace the response variables
+    for filename in os.listdir(SAMPLE_DIR):
+        patientID = int(re.search(regexStr, filename).group(0))
+        absPath = os.path.join(SAMPLE_DIR,filename)
+        sample = np.fromfile(absPath, dtype='float32')
+        sample[0] = feature[patientID-1]
+        sample.tofile(absPath)
+
+    zipDirectory(SAMPLE_DIR, outputDirName=outputDataName)
+
+def getDatasetResponse(dataName):
+    unzipDirectory(dataName)
+    for filename in os.listdir(SAMPLE_DIR):
+        absPath = os.path.join(SAMPLE_DIR,filename)
+        sample = np.fromfile(absPath, dtype='float32')
+        print "%s: %f" %(filename,sample[0])
+
 if __name__ == '__main__':
+    changeResponseVariable(10, '/data/zipped/swap13', '/data/zipped/swap13_age')
+    changeResponseVariable(10, '/data/zipped/swap25', '/data/zipped/swap25_age')
+    changeResponseVariable(10, '/data/zipped/swap58', '/data/zipped/swap58_age')
+    #getDatasetResponse('/data/zipped/blackout_age')
     #prepreProcess()
     pass
     # combineROITestJSON('/data/test_roi_batchSz_10_reduce_4.json', '/data/roi_batchSz_10_reduction_4_test_json', 10, 4)

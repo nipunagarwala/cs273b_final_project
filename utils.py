@@ -95,7 +95,7 @@ def extract_parser():
 
     parser.add_argument('--dataDir', dest='dataDir', default='',
                         help='Directory to load the samples from.')
-    
+
     parser.set_defaults(overrideChkpt=False)
     return parser.parse_args()
 
@@ -113,15 +113,17 @@ def zipper(dataPack):
             fullname = os.path.join(fromDir, filename)
             f.write(fullname, arcname=filename)
 
-def zipDirectory(dataDir, zipSz=250):
+def zipDirectory(dataDir, outputDirName=None, zipSz=250):
     # compress the directories into chunks of zip files
     poolWorkerCount = 8
 
     if dataDir[-1]=='/':
         dataDir = dataDir[:-1]
 
-    outputDirName = '%s_compressed' % dataDir
-    print "Zipping up " + outputDirName
+    if outputDirName==None:
+        outputDirName = '%s_compressed' % dataDir
+
+    print "Zipping up %s to %s" %(dataDir,outputDirName)
     if not os.path.exists(outputDirName):
         os.mkdir(outputDirName)
 
@@ -159,7 +161,7 @@ def unzipper(dataPack):
     zip_ref.extractall(testDir)
     zip_ref.close()
 
-SAMPLE_DIR = '/data/tests_tmp'
+SAMPLE_DIR = '/data/zipped/tests_tmp'
 SAMPLE_JSON = os.path.join(SAMPLE_DIR, 'test.json')
 def unzipDirectory(dataDir):
     # uncompress the .zip files in the specified directory under '/data/tests_tmp'
@@ -198,6 +200,9 @@ def create_conditions(args, FLAGS):
     run_all = False
     visualization = None
 
+    if args.blackout:
+        args.dataDir = '/data/zipped/blackout'
+
     if args.dataDir=='':
         print "[ERROR] Please specify the data directory the network can load .bin files from..."
         exit(1)
@@ -224,7 +229,7 @@ def create_conditions(args, FLAGS):
         # max_steps = 107
         max_steps = 4 #4#30#150
     elif args.blackout:
-        binary_filelist = FLAGS.reduced_test_binaries
+        binary_filelist = SAMPLE_JSON
         visualization = 'blackout'
         batch_size = 32
         max_steps = 33 #117*9/batchSz
