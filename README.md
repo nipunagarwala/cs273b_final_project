@@ -67,6 +67,8 @@ python run.py --test --model mmnn
 
 ```--overrideChkpt``` - Add this flag if you want to ignore the checkpoint files already in the checkpoint directory.
 
+```--dataDir``` - Specify the data directory to load the samples from.
+
 ### Example Usages:
 
 Training CNN with 1000 iterations, store checkpoints in '/data/ckpt'
@@ -79,7 +81,7 @@ Training MMNN with 1000 iterations from a checkpoint stored under file './chkpt'
 
 Training CNN with 1000 iterations, store checkpoints in './chkpt', but ignore any checkpoints already stored in that directory
 
-	python run.py --train --overrideChkpt --model cnn --numIters 1000 --chkPointDir ./chkpt
+	python run.py --train --overrideChkpt --model cnn --numIters 1000 --chkPointDir ./chkpt --dataDir /data/swap_partial_13_binaries_reduced_compressed/
 
 
 ## Network Architecture Training Notes and Tips:
