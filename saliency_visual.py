@@ -68,4 +68,3 @@ def saliency(image, scores, sess, phase_train):
             name = "_autism_" if incLabels[j,1] == 1 else "_control_"
             fullfile = str(j+1) + name + str(k)
             np.save("/data/saliency/" + fullfile, grad_vals[k,j,:,:,:,0])
->>>>>>> visuals

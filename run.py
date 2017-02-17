@@ -313,7 +313,6 @@ def run_model(train, model, binary_filelist, run_all, batch_size, max_steps, ove
 
     # Only use latest checkpoint
     ckpt_list = [ckpt_list[-1]]
-    ckpt_list = ['/data/axel_ckpt/cnn_swap25/model.ckpt-1800']
 
     with open('checkpoint_results.csv', 'a') as csvfile:
         writer = csv.writer(csvfile)

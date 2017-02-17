@@ -92,8 +92,103 @@ def extract_parser():
                         help='Number of Training Iterations. Default is 200')
     parser.add_argument('--overrideChkpt', dest='overrideChkpt', action="store_true",
                         help='Override the checkpoints')
+
+    parser.add_argument('--dataDir', dest='dataDir', default='',
+                        help='Directory to load the samples from.')
+    
     parser.set_defaults(overrideChkpt=False)
     return parser.parse_args()
+
+
+import zipfile
+import shutil
+from multiprocessing import Pool
+
+def zipper(dataPack):
+    # a helper function for zipDirectory()
+    fromDir, filenames, toDir = dataPack
+
+    with zipfile.ZipFile(toDir, 'w', zipfile.ZIP_DEFLATED) as f:
+        for filename in filenames:
+            fullname = os.path.join(fromDir, filename)
+            f.write(fullname, arcname=filename)
+
+def zipDirectory(dataDir, zipSz=250):
+    # compress the directories into chunks of zip files
+    poolWorkerCount = 8
+
+    if dataDir[-1]=='/':
+        dataDir = dataDir[:-1]
+
+    outputDirName = '%s_compressed' % dataDir
+    print "Zipping up " + outputDirName
+    if not os.path.exists(outputDirName):
+        os.mkdir(outputDirName)
+
+    filenames = os.listdir(dataDir)
+    zipCount = int((zipSz<<20)/os.stat(os.path.join(dataDir, filenames[0])).st_size)
+    if len(filenames) < poolWorkerCount*zipCount:
+        zipCount = len(filenames)/poolWorkerCount + 1
+
+    zipNum = 0
+    count = 0
+    zipNames = []
+    dataPacks = []
+    for filename in filenames:
+        count += 1
+        zipNames.append(filename)
+
+        if count == zipCount:
+            toDir = '%s/compressed_%d' % (outputDirName, zipNum)
+            dataPacks.append((dataDir, zipNames, toDir))
+
+            zipNum += 1
+            count = 0
+            zipNames = []
+
+    if count != 0:
+        toDir = '%s/compressed_%d' % (outputDirName, zipNum)
+        dataPacks.append((dataDir, zipNames, toDir))
+
+    p = Pool(poolWorkerCount)
+    p.map(zipper, dataPacks)
+
+def unzipper(dataPack):
+    fullname, testDir = dataPack
+    zip_ref = zipfile.ZipFile(fullname, 'r')
+    zip_ref.extractall(testDir)
+    zip_ref.close()
+
+SAMPLE_DIR = '/data/tests_tmp'
+SAMPLE_JSON = os.path.join(SAMPLE_DIR, 'test.json')
+def unzipDirectory(dataDir):
+    # uncompress the .zip files in the specified directory under '/data/tests_tmp'
+    poolWorkerCount = 8
+
+    if os.path.exists(SAMPLE_DIR):
+        shutil.rmtree(SAMPLE_DIR)
+    os.mkdir(SAMPLE_DIR)
+
+    dataPacks = []
+    for filename in os.listdir(dataDir):
+        fullname = os.path.join(dataDir, filename)
+        dataPacks.append((fullname, SAMPLE_DIR))
+
+    p = Pool(poolWorkerCount)
+    p.map(unzipper, dataPacks)
+
+def genDirectoryJSON(dataDir=SAMPLE_DIR):
+    import json
+    filenames = [os.path.join(dataDir, fName) for fName in os.listdir(dataDir)]
+    json.dump(filenames, open(SAMPLE_JSON,'w'))
+
+def load_sample(dataDir):
+    print 'Unzipping the directory %s' % dataDir
+    unzipDirectory(dataDir)
+    print 'Unzipping successful....'
+    print 'Generating a correct JSON...'
+    genDirectoryJSON()
+    print 'JSON successfully generated.'
 
 def create_conditions(args, FLAGS):
     binary_filelist = None
@@ -103,13 +198,19 @@ def create_conditions(args, FLAGS):
     run_all = False
     visualization = None
 
+    if args.dataDir=='':
+        print "[ERROR] Please specify the data directory the network can load .bin files from..."
+        exit(1)
+
+    load_sample(args.dataDir)
+
     if args.train:  # We have 963 train patients
         if args.model == 'ae':
             binary_filelist = FLAGS.ae_train_binaries
         elif args.model == 'cae':
             binary_filelist = FLAGS.train_binaries
         else:
-            binary_filelist = FLAGS.reduced_train_binaries
+            binary_filelist = SAMPLE_JSON
         batch_size = 32
         # batch_size = 1
         max_steps = args.numIters
@@ -119,7 +220,7 @@ def create_conditions(args, FLAGS):
         elif args.model == 'cae':
             binary_filelist = FLAGS.test_binaries
         else:
-            binary_filelist = FLAGS.reduced_test_binaries
+            binary_filelist = SAMPLE_JSON
         # max_steps = 107
         max_steps = 4 #4#30#150
     elif args.blackout:
@@ -133,7 +234,7 @@ def create_conditions(args, FLAGS):
         elif args.model == 'cae':
             binary_filelist = FLAGS.all_binaries
         else:
-            binary_filelist = FLAGS.reduced_all_binaries
+            binary_filelist = SAMPLE_JSON
         run_all = True
 
     return binary_filelist, batch_size, max_steps, run_all, visualization
@@ -232,3 +333,6 @@ def compute_statistics(targets, predictions):
     print "F-score of the model is: " + str(f_score)
 
     return conf_matrix, accuracy, recall, precision, f_score
+
+if __name__ == '__main__':
+    pass
