@@ -1,6 +1,6 @@
 import tensorflow as tf
 import numpy as np
-from input_brain import *
+from cae_input_brain import *
 from utils import *
 
 
