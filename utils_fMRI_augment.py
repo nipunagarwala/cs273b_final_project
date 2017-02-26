@@ -1,6 +1,7 @@
 from operator import truediv
 from utils_visual import *
 from utils import *
+from create_brain_binaries import *
 from multiprocessing import Pool
 
 import os
@@ -18,6 +19,7 @@ BRAIN_DIR = '/data/originalfALFFData'
 
 ALL_BRAINS = None
 BRAINID2COORDS = None
+FEATURES = None
 
 def loadfALFF(patientID):
     """
@@ -381,6 +383,24 @@ def augmentCompleteSwapWorker(num):
         if control!=None:
             np.save('/data/augmented_swap_all/'+str(num)+'_control_all_patched',control)
 
+def saveInBin(brain_npy, out_filename, patientID):
+    from create_brain_binaries import _normalize_brain
+
+    global FEATURES
+
+    brain_npy = brain_npy.astype(np.float32)
+    normailized_brain = _normalize_brain(brain_npy)
+
+    # Create binaries from all data
+    features_flat = FEATURES[int(patientID)].flatten().tolist()
+    image_flat = normailized_brain.flatten().tolist()
+
+    # features, then image
+    out = np.array(features_flat + image_flat, np.float32)
+
+    # Save
+    out.tofile(out_filename)
+
 def augmentPartialSwapWorker(runList):
     """
     Creates and saves partial swapout brain
@@ -391,29 +411,33 @@ def augmentPartialSwapWorker(runList):
                       runList[2] - number of regions to swap
     """
 
-    num = runList[0]
-    filename = runList[1]
-    numStealRegions = runList[2]
-    if not os.path.isfile(filename+'.npy'):
-        brain = augmentPatchwork(patientID=num, numStealRegions=numStealRegions)
+    patientID,filename,numStealRegions = runList
+
+    if not os.path.isfile(filename+'.bin'):
+        brain = augmentPatchwork(patientID=patientID, numStealRegions=numStealRegions)
         if brain!=None:
-            np.save(filename,brain)
+            saveInBin(brain, filename, patientID)
 
 def augmentPartialSwap(numStealRegions):
     """
     Multiprocess partial brain swap function
     """
 
+    outputFolder = '/data/augmented_swap_partial_steal_%d' % numStealRegions
+    if outputFolder != None:
+        if not os.path.exists(outputFolder):
+            os.makedirs(outputFolder)
+
     autistic,control = getGroupLabels()
 
     runList = []
     for i in range(10):
         for a in autistic:
-            runList.append((a,'/data/augmented_swap_partial_steal_%d/%d_autism_partially_patched_%d' 
-                               % (numStealRegions,a,i),numStealRegions))
+            runList.append((a,'%s/%d_autism_partially_patched_%d.bin' 
+                               % (outputFolder,a,i),numStealRegions))
         for c in control:
-            runList.append((c,'/data/augmented_swap_partial_steal_%d/%d_control_partially_patched_%d' 
-                               % (numStealRegions,c,i),numStealRegions))
+            runList.append((c,'%s/%d_control_partially_patched_%d.bin' 
+                               % (outputFolder,c,i),numStealRegions))
 
     p = Pool(8)
     p.map(augmentPartialSwapWorker,runList)
@@ -588,10 +612,15 @@ def prepreProcess():
     Loads every brain npy into ALL_BRAINS and BRAINID2COORDS
     """
 
-    global ALL_BRAINS,BRAINID2COORDS
+    global ALL_BRAINS,BRAINID2COORDS,FEATURES
     BRAINID2COORDS = pickle.load(open('/data/useful_npy/brainRegionID2Coords.p','rb'))
+    FEATURES = pickle.load(open('/data/useful_npy/featureDict.p','rb'))
+
     ALL_BRAINS = []
     for patientID in xrange(1,1072):
+        if patientID%100==0:
+            print '.'
+
         # load the base brain
         filepath = os.path.join(BRAIN_DIR,'original_%d.npy'%patientID)
         ALL_BRAINS.append(np.load(filepath))
@@ -836,12 +865,53 @@ def getDatasetResponse(dataName):
         sample = np.fromfile(absPath, dtype='float32')
         print "%s: %f" %(filename,sample[0])
 
+PHENOTYPE_FILE = os.path.abspath('/data/normalized_imputed_phenotype_data.csv')
+def feature2NPY():
+    featureList = {}
+    with open(PHENOTYPE_FILE, 'r') as csvfile:
+        patient_reader = csv.reader(csvfile)
+        for patient in patient_reader:
+            patient_id = patient[0]
+            if patient_id == "":
+                continue
+
+            # Retrieve data from phenotype CSV
+            phenotype_data = [patient[3]] + patient[5:16] + patient[19:]
+            phenotype_data = np.asarray(phenotype_data, dtype=np.float32)
+
+            featureList[int(patient_id)] = phenotype_data
+
+    with open('/data/useful_npy/featureDict.p', 'wb') as f:
+        pickle.dump(featureList, f)
+
+def moveJSONlisted2DirWorker(filename):
+    shutil.copy2(filename, SAMPLE_DIR)
+
+def moveJSONlisted2Dir(jsonFile, outDir):
+    import json,shutil
+    
+    if os.path.exists(SAMPLE_DIR):
+        shutil.rmtree(SAMPLE_DIR)
+    os.mkdir(SAMPLE_DIR)
+    if os.path.exists(outDir):
+        shutil.rmtree(outDir)
+    os.mkdir(outDir)
+
+    with open(os.path.join('/data',jsonFile)) as data_file:
+        listed = [a for a in json.load(data_file)]
+
+    p = Pool(8)
+    p.map(moveJSONlisted2DirWorker,listed)
+            
+    zipDirectory(SAMPLE_DIR, outputDirName=outDir)
+
 if __name__ == '__main__':
-    changeResponseVariable(10, '/data/zipped/swap13', '/data/zipped/swap13_age')
-    changeResponseVariable(10, '/data/zipped/swap25', '/data/zipped/swap25_age')
-    changeResponseVariable(10, '/data/zipped/swap58', '/data/zipped/swap58_age')
+    moveJSONlisted2Dir('/data/reduced_train2.json', '/data/zipped/original_reduced_train')
+    moveJSONlisted2Dir('/data/reduced_test2.json', '/data/zipped/original_reduced_test')
+    # prepreProcess()
+    #augmentPartialSwapWorker((1,'a.bin',20))
+
     #getDatasetResponse('/data/zipped/blackout_age')
-    #prepreProcess()
     pass
     # combineROITestJSON('/data/test_roi_batchSz_10_reduce_4.json', '/data/roi_batchSz_10_reduction_4_test_json', 10, 4)
     # combineROITestJSON('/data/test_roi_batchSz_10_reduce_5.json', '/data/roi_batchSz_10_reduction_5_test_json', 10, 5)

@@ -115,6 +115,10 @@ def zipper(dataPack):
 
 def zipDirectory(dataDir, outputDirName=None, zipSz=250):
     # compress the directories into chunks of zip files
+    if outputDirName!=None:
+        if not os.path.exists(outputDirName):
+            os.makedirs(outputDirName)
+
     poolWorkerCount = 8
 
     if dataDir[-1]=='/':
@@ -202,6 +206,8 @@ def create_conditions(args, FLAGS):
 
     if args.blackout:
         args.dataDir = '/data/zipped/blackout'
+    elif args.test:
+        args.dataDir = '/data/zipped/original_reduced_test'
 
     if args.dataDir=='':
         print "[ERROR] Please specify the data directory the network can load .bin files from..."
