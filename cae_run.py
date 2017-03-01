@@ -128,10 +128,32 @@ def createAutoEncoderModel(train, data_list, batch_size):
     return keys, layer_outputs, weights, weight_shapes, encode, decode, brain_image, pheno_data, label, cost, train_op
 
 
+def genDirectoryJSON_cae(dataDir, output_dir):
+    import json
+    originalList = os.listdir(dataDir)
+    reducedList = [fname.replace('_reduced.','.') for fname in os.listdir(output_dir)]
+
+    files2process = []
+
+    for fname in originalList:
+        if fname not in reducedList:
+            files2process.append(os.path.join(dataDir, fname))
+
+    print 'Reducing %d files in directory "%s" to directory "%s"' \
+                            % (len(files2process),dataDir,output_dir)
+
+    json.dump(files2process, open(SAMPLE_JSON,'w'))
+
+    return len(files2process)
+
+
 def run_cae(state, input_dir, batch_size, max_steps):
     # binary_filelist: path of file containing binary file name list
     output_dir = input_dir + '_reduced'
-    genDirectoryJSON(dataDir=input_dir)
+    if state==RUN_ALL:
+        max_steps = genDirectoryJSON_cae(input_dir, output_dir)
+    else:
+        max_steps = genDirectoryJSON(input_dir)
     binary_filelist = SAMPLE_JSON
 
     keys, layer_outputs, weights, weight_shapes, encode, decode, brain_image, pheno_data, label, cost, train_op = createAutoEncoderModel(state==TRAIN, binary_filelist, batch_size)
@@ -143,8 +165,9 @@ def run_cae(state, input_dir, batch_size, max_steps):
     # Create a saver
     saver = tf.train.Saver(tf.all_variables())
 
+    tt = {}
     # Launch the graph in a session
-    gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.7)
+    gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.8)
     with tf.Session(config=tf.ConfigProto(gpu_options=gpu_options)) as sess:
         init_op = tf.group(tf.initialize_all_variables(), tf.initialize_local_variables())
         init_op.run()
@@ -199,7 +222,6 @@ def run_cae(state, input_dir, batch_size, max_steps):
                 # ourput image currently: 31x37x31
 
                 out_filename = os.path.join(output_dir, os.path.basename(filename).replace('.','_reduced.'))
-                print out_filename
                 _create_feature_binary(patient_pheno, encoded_image, patient_label, out_filename)
 
         if state==TRAIN:
@@ -233,7 +255,7 @@ def applyCAE(state=RUN_ALL, input_dir=''):
                 os.makedirs(outputFolder)
 
         batch_size = 1
-        max_steps = len(os.listdir(input_dir))
+        max_steps = 0
 
     if os.path.exists(SAMPLE_DIR):
         shutil.rmtree(SAMPLE_DIR)

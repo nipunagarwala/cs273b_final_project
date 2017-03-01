@@ -108,6 +108,8 @@ def inputs(train, data_list, batch_size, dimensions):
 	else:
 		print "Not Shuffle Init"
 		num_examples_per_epoch = NUM_EXAMPLES_PER_EPOCH_FOR_EVAL
+		if len(filenames)%5==0:
+			filenames = filenames[:-2]
         filename_queue = tf.train.string_input_producer(filenames, shuffle=False)
 
 	# Read examples from files in filename queue

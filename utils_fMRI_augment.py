@@ -239,23 +239,28 @@ def augmentGeoTrans(patientID, originalDir='/data/originalfALFFData', outDir='/d
             flipped = flipped[:,:,::-1]
         np.save(outfilepath, flipped)
 
-def getGroupLabels(filename='/data/processed_phenotype_data.csv'):
+def getGroupLabels(groupType='autism', filename='/data/processed_phenotype_data.csv'):
     """
     Returns 2 lists, each listing autistic or control patient IDs
     """
 
-    autismIDs = []
-    controlIDs = []
+    if groupType=='autism':
+        colnum = 3
+    elif groupType=='gender':
+        colnum = 11
+
+    zeroIDs = []
+    oneIDs = []
     with open(filename) as csvfile:
         csvR = csv.reader(csvfile)
         next(csvR)
         for row in csvR:
-            if row[3]=='0':
-                controlIDs.append(int(row[0])) 
+            if row[colnum]=='0':
+                zeroIDs.append(int(row[0])) 
             else:
-                autismIDs.append(int(row[0])) 
+                oneIDs.append(int(row[0])) 
 
-    return sorted(autismIDs),sorted(controlIDs)
+    return sorted(oneIDs),sorted(zeroIDs)
 
 def blackOutBrain(brainMat, brainRegions):
     """
@@ -308,7 +313,7 @@ def getBrainRegion(patientID, brainRegions, partialBrain=None):
 
     return partialBrain
 
-def augmentPatchwork(patientID=None, numStealRegions=None, autistic=None, blackout=False):
+def augmentPatchwork(patientID=None, numStealRegions=None, autistic=None, blackout=False, groupType='autism'):
     """
     Swapout/blackout data augmentation
 
@@ -325,10 +330,14 @@ def augmentPatchwork(patientID=None, numStealRegions=None, autistic=None, blacko
     """
 
     global ALL_BRAINS,BRAINID2COORDS
-    autismIDs,controlIDs = getGroupLabels()
+    autismIDs,controlIDs = getGroupLabels(groupType=groupType)
 
     # only augment the training set!
-    testIDs = np.load('/data/useful_npy/testPatientIDs.npy').tolist()
+    if groupType=='autism':
+        testIDs = np.load('/data/useful_npy/testPatientIDs.npy').tolist()
+    elif groupType=='gender':
+        testIDs = np.load('/data/useful_npy/testPatientIDs_gender.npy').tolist()
+
     if patientID!=None and patientID in testIDs:
         return None
 
@@ -383,16 +392,22 @@ def augmentCompleteSwapWorker(num):
         if control!=None:
             np.save('/data/augmented_swap_all/'+str(num)+'_control_all_patched',control)
 
-def saveInBin(brain_npy, out_filename, patientID):
+def saveInBin(brain_npy, out_filename, patientID, groupType):
     from create_brain_binaries import _normalize_brain
 
     global FEATURES
+
+    if groupType=='autism':
+        colnum = 0
+    elif groupType=='gender':
+        colnum = 2
 
     brain_npy = brain_npy.astype(np.float32)
     normailized_brain = _normalize_brain(brain_npy)
 
     # Create binaries from all data
     features_flat = FEATURES[int(patientID)].flatten().tolist()
+    features_flat[0] = features_flat[colnum]
     image_flat = normailized_brain.flatten().tolist()
 
     # features, then image
@@ -409,35 +424,47 @@ def augmentPartialSwapWorker(runList):
     @param runList  : runList[0] - base brain patient ID
                       runList[1] - filename to save to
                       runList[2] - number of regions to swap
+                      runList[3] - groupType ('autism', 'gender')
     """
 
-    patientID,filename,numStealRegions = runList
+    patientID,filename,numStealRegions,groupType = runList
 
     if not os.path.isfile(filename+'.bin'):
-        brain = augmentPatchwork(patientID=patientID, numStealRegions=numStealRegions)
+        brain = augmentPatchwork(patientID=patientID, numStealRegions=numStealRegions, groupType=groupType)
         if brain!=None:
-            saveInBin(brain, filename, patientID)
+            saveInBin(brain, filename, patientID, groupType)
 
-def augmentPartialSwap(numStealRegions):
+def augmentPartialSwap(numStealRegions, groupType='autism'):
     """
     Multiprocess partial brain swap function
+
+    groupType:
+        'autism', 'gender'
     """
 
-    outputFolder = '/data/augmented_swap_partial_steal_%d' % numStealRegions
+    outputFolder = '/data/augmented_swap_partial_steal_%d' % (numStealRegions)
+    if groupType=='autism':
+        zeroStr = 'control'
+        oneStr = 'autism'
+    if groupType=='gender':
+        outputFolder += '_' + groupType
+        zeroStr = 'female'
+        oneStr = 'male'
+
     if outputFolder != None:
         if not os.path.exists(outputFolder):
             os.makedirs(outputFolder)
 
-    autistic,control = getGroupLabels()
+    oneLabel,zeroLabel = getGroupLabels(groupType)
 
     runList = []
     for i in range(10):
-        for a in autistic:
-            runList.append((a,'%s/%d_autism_partially_patched_%d.bin' 
-                               % (outputFolder,a,i),numStealRegions))
-        for c in control:
-            runList.append((c,'%s/%d_control_partially_patched_%d.bin' 
-                               % (outputFolder,c,i),numStealRegions))
+        for a in oneLabel:
+            runList.append((a,'%s/%d_%s_partially_patched_%d.bin' 
+                               % (outputFolder,a,oneStr,i), numStealRegions, groupType))
+        for c in zeroLabel:
+            runList.append((c,'%s/%d_%s_partially_patched_%d.bin' 
+                               % (outputFolder,c,zeroStr,i), numStealRegions, groupType))
 
     p = Pool(8)
     p.map(augmentPartialSwapWorker,runList)
@@ -818,6 +845,31 @@ def split_list(idList, split_fraction):
     test_files = idList[num_train:]
     return train_files,test_files
 
+def split_samples(groupType):
+    """
+    Split 1071 samples into test and train samples according to the 
+    response variable specified by @groupType
+
+    Then save the split
+    """
+
+    oneLabel,zeroLabel = getGroupLabels(groupType=groupType)
+
+    zero_train_files,zero_test_files = split_list(zeroLabel, 109.0/len(zeroLabel))
+    one_train_files,one_test_files = split_list(oneLabel, 862.0/len(oneLabel))
+
+    trainFiles = zero_train_files + one_train_files
+    testFiles = zero_test_files + one_test_files
+
+    outfileTrain = '/data/useful_npy/trainPatientIDs'
+    outfileTest = '/data/useful_npy/testPatientIDs'
+    if groupType!='autism':
+        outfileTrain += '_'+groupType
+        outfileTest += '_'+groupType
+
+    np.save(outfileTrain, np.asarray(list(set(trainFiles))))
+    np.save(outfileTest, np.asarray(list(set(testFiles))))
+
 def createBlackRegions(patientID):
     autistic,control = getGroupLabels()
     patLabel = 'autistic' if patientID in autistic else 'control'
@@ -905,9 +957,25 @@ def moveJSONlisted2Dir(jsonFile, outDir):
             
     zipDirectory(SAMPLE_DIR, outputDirName=outDir)
 
+def createNewResponseDataset():
+    import re
+    testIDs = np.load('/data/useful_npy/testPatientIDs_gender.npy').tolist()
+    trainIDs = np.load('/data/useful_npy/trainPatientIDs_gender.npy').tolist()
+
+    for fname in os.listdir('/data/binaries_reduced2'):
+        data = np.fromfile(os.path.join('/data/binaries_reduced2',fname), dtype='float32')
+        #data[0] = data[2]
+
+        patientID = int(re.search('[0-9]+',re.search('[0-9]+.bin',fname).group(0)).group(0))
+        #outdir = '/data/zipped/gender_reduced_test' if patientID in testIDs else '/data/zipped/gender_reduced_train'
+        #np.tofile(os.path.join(outdir,fname))
+        print fname
+        print patientID
+        print data[0:30]
+
+
 if __name__ == '__main__':
-    moveJSONlisted2Dir('/data/reduced_train2.json', '/data/zipped/original_reduced_train')
-    moveJSONlisted2Dir('/data/reduced_test2.json', '/data/zipped/original_reduced_test')
+
     # prepreProcess()
     #augmentPartialSwapWorker((1,'a.bin',20))
 
